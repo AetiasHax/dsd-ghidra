@@ -24,7 +24,7 @@ You can load a DS game by dropping a DS ROM file into the Ghidra project window,
 ### Sync with dsd
 You can synchronize your Ghidra program with a dsd configuration by running the `SyncDsd.java` script in the Script Manager. The script can also be added to the toolbar by checking the "In Tool" checkbox.
 
-## How to build
+## How to build (Windows + IntelliJ)
 
 > [!NOTE]
 > The following instructions assume you are using a Windows machine and have installed IntelliJ. Feel free to contribute build
@@ -51,3 +51,21 @@ You can also debug the extension through IntelliJ:
     4. Main class: `ghidra.Ghidra`
     5. Program arguments: `ghidra.GhidraRun`
     6. Environment variables: `GHIDRA_INSTALL_DIR=C:/path/to/ghidra_11.2.1_PUBLIC/`
+
+## How to build (Linux + Eclipse)
+
+1. Install cross (requires rustup and Docker, see [Installing Cross](https://github.com/cross-rs/cross/wiki/Getting-Started))
+2. Add the cross toolchain for Windows
+    1. Set up [cross-toolchains](https://github.com/cross-rs/cross-toolchains)
+    2. Run `cargo build-docker-image x86_64-pc-windows-msvc-cross --tag local` (this may take a while)
+    3. Back in this directory, `cp Cross.toml.linux Cross.toml`
+3. Run the `build.sh` bash script
+    1. You can add the `--debug` flag to build debug versions
+4. Configure Gradle:
+    1. Copy the `dsd-ghidra/gradle.properties.example` file to `dsd-ghidra/gradle.properties`
+    2. Edit the `GHIDRA_INSTALL_DIR` property in `gradle.properties` to point to your Ghidra installation
+5. Load the project into Eclipse
+    1. Ensure you have the latest version of GhidraDev installed
+    2. Import the `dsd-ghidra` sub-project as a Gradle project
+    3. GhidraDev -> Link Ghidra
+    4. GhidraDev -> Export -> Extension
