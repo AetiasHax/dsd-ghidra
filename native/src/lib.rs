@@ -5,7 +5,10 @@ mod traits;
 pub mod types;
 
 use core::slice;
-use std::{ffi::CStr, fmt::Display};
+use std::{
+    ffi::{c_char, CStr},
+    fmt::Display,
+};
 
 use ds_rom::rom::{raw, Rom};
 use loader::{DsRomLoaderData, SafeDsRomLoaderData};
@@ -65,7 +68,7 @@ pub unsafe extern "C" fn free_loader_data(data: *mut DsRomLoaderData) {
 /// * `config_path` must be a valid null-terminated string.
 /// * `data` must be allocated and uninitialized.
 #[no_mangle]
-pub unsafe extern "C" fn get_dsd_sync_data(config_path: *const i8, data: *mut DsdSyncData) -> bool {
+pub unsafe extern "C" fn get_dsd_sync_data(config_path: *const c_char, data: *mut DsdSyncData) -> bool {
     let cstr = CStr::from_ptr(config_path);
     let Some(config_path) = unwrap_or_log(cstr.to_str()) else {
         return false;

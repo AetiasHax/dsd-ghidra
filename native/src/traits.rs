@@ -1,5 +1,5 @@
 use std::{
-    ffi::CString,
+    ffi::{c_char, CString},
     ptr::{self, NonNull},
     slice,
 };
@@ -61,7 +61,7 @@ where
 
 #[repr(C)]
 #[derive(Clone, Debug)]
-pub struct UnsafeString(*mut i8);
+pub struct UnsafeString(*mut c_char);
 
 impl TryIntoUnsafe for String {
     type UnsafeType = UnsafeString;
