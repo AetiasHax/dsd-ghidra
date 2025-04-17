@@ -7,6 +7,7 @@ import java.util.List;
 
 public class DsdSyncAutoload extends Structure {
     public int kind;
+    public int index;
     public DsdSyncModule module;
 
     public DsdSyncAutoload() {
@@ -19,7 +20,7 @@ public class DsdSyncAutoload extends Structure {
 
     @Override
     protected List<String> getFieldOrder() {
-        return List.of("kind", "module");
+        return List.of("kind", "index", "module");
     }
 
     public DsdSyncAutoloadKind getKind() {

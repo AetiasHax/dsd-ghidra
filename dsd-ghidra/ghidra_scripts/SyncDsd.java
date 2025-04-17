@@ -79,7 +79,7 @@ public class SyncDsd extends GhidraScript {
                 case Itcm -> this.syncModule(autoload.module, dsModules.itcm);
                 case Dtcm -> this.syncModule(autoload.module, dsModules.dtcm);
                 case Unknown -> {
-                    DsModule dsModule = dsModules.getAutoload(autoload.module.base_address);
+                    DsModule dsModule = dsModules.getAutoload(autoload.index);
                     if (dsModule == null) {
                         throw new Exception("No memory blocks for unknown autoload at base address " +
                             Integer.toHexString(autoload.module.base_address));

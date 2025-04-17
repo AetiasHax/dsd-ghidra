@@ -344,6 +344,10 @@ public class DsIoRegister {
         new DsIoRegister(0x04800000, "REG_WIFI"),
     };
 
+    public static final DsIoRegister[] BIOS_REGS = {
+        new DsIoRegister(0x027ffc40, "BIOS_BOOT_INDICATOR"),
+    };
+
     public final int address;
     public final String name;
 

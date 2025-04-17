@@ -9,7 +9,7 @@ public class DsModules {
     public final DsModule main;
     public final DsModule itcm;
     public final DsModule dtcm;
-    private final Map<Integer, DsModule> autoloads;
+    private final DsModule[] autoloads;
     private final DsModule[] overlays;
 
     public DsModules(Memory memory) {
@@ -32,18 +32,22 @@ public class DsModules {
             overlayList.set(overlayId, overlay);
         }
 
-        Map<Integer, DsModule> autoloadMap = new HashMap<>();
+        List<DsModule> autoloadList = new ArrayList<>();
         String autoloadModuleName;
         while ((autoloadModuleName = findAutoload(blockList)) != null) {
-            int baseAddress = getAutoloadBaseAddress(autoloadModuleName);
+            int autoloadIndex = getAutoloadIndex(autoloadModuleName);
+            while (autoloadList.size() < autoloadIndex + 1) {
+                autoloadList.add(null);
+            }
+
             DsModule autoload = constructModule(blockList, autoloadModuleName);
-            autoloadMap.put(baseAddress, autoload);
+            autoloadList.set(autoloadIndex, autoload);
         }
 
         this.main = main;
         this.itcm = itcm;
         this.dtcm = dtcm;
-        this.autoloads = autoloadMap;
+        this.autoloads = autoloadList.toArray(new DsModule[0]);
         this.overlays = overlayList.toArray(new DsModule[0]);
     }
 
@@ -97,13 +101,13 @@ public class DsModules {
         return Integer.parseInt(overlayIdString, 10);
     }
 
-    private static int getAutoloadBaseAddress(String moduleName) {
+    public static int getAutoloadIndex(String moduleName) {
         if (!moduleName.startsWith("autoload_")) {
             return -1;
         }
 
         String addressString = moduleName.substring(9);
-        return Integer.parseInt(addressString, 16);
+        return Integer.parseInt(addressString);
     }
 
     private static DsModule constructModule(List<MemoryBlock> blockList, String... moduleNames) {
@@ -144,8 +148,11 @@ public class DsModules {
     /**
      * Gets an autoload module other than ITCM and DTCM.
      */
-    public DsModule getAutoload(int baseAddress) {
-        return autoloads.get(baseAddress);
+    public DsModule getAutoload(int index) {
+        if (index < 0 || index >= autoloads.length) {
+            return null;
+        }
+        return autoloads[index];
     }
 
     public DsModule getOverlay(int id) {
@@ -158,13 +165,10 @@ public class DsModules {
     public String toString(int indent) {
         String pad = new String(new char[indent]).replace('\0', ' ');
         String pad2 = new String(new char[indent + 2]).replace('\0', ' ');
-        String pad4 = new String(new char[indent + 4]).replace('\0', ' ');
 
-        List<String> autoloads = this
-            .autoloads
-            .entrySet()
-            .stream()
-            .map(entry -> pad4 + Integer.toHexString(entry.getKey()) + ": " + entry.getValue().toString(indent + 4))
+        List<String> autoloads = Arrays
+            .stream(this.autoloads)
+            .map(autoload -> autoload.toString(indent + 4))
             .toList();
         List<String> overlays = Arrays
             .stream(this.overlays)

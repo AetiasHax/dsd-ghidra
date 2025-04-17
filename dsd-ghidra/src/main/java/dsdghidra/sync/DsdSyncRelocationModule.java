@@ -5,7 +5,8 @@ public enum DsdSyncRelocationModule {
     Overlays,
     Main,
     Itcm,
-    Dtcm;
+    Dtcm,
+    Autoload;
 
     public static final DsdSyncRelocationModule[] VALUES = DsdSyncRelocationModule.values();
 }

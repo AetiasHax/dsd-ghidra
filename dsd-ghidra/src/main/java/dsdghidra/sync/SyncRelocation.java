@@ -33,10 +33,10 @@ public class SyncRelocation {
                 return references.length > 0;
             }
             case Overlays -> {
-                if (dsdRelocation.overlays.len != references.length) {
+                if (dsdRelocation.indices.len != references.length) {
                     return true;
                 }
-                short[] overlays = dsdRelocation.overlays.getArray();
+                short[] overlays = dsdRelocation.indices.getArray();
                 for (Reference reference : references) {
                     if (reference.getToAddress().getOffset() != dsdRelocation.to) {
                         return true;
@@ -87,6 +87,17 @@ public class SyncRelocation {
                 String addressSpaceName = references[0].getToAddress().getAddressSpace().getName();
                 return isDtcm(addressSpaceName);
             }
+            case Autoload -> {
+                if (references.length != 1) {
+                    return true;
+                }
+                if (references[0].getToAddress().getOffset() != dsdRelocation.to) {
+                    return true;
+                }
+                String addressSpaceName = references[0].getToAddress().getAddressSpace().getName();
+                int autoloadIndex = dsdRelocation.indices.getArray()[0];
+                return parseAutoloadIndex(addressSpaceName) == autoloadIndex;
+            }
         }
         throw new MatchException("Unknown relocation type", null);
     }
@@ -106,7 +117,7 @@ public class SyncRelocation {
             case None -> {
             }
             case Overlays -> {
-                short[] array = dsdRelocation.overlays.getArray();
+                short[] array = dsdRelocation.indices.getArray();
                 for (int i = 0; i < array.length; i++) {
                     short id = array[i];
                     boolean primary = i == 0;
@@ -121,6 +132,10 @@ public class SyncRelocation {
             }
             case Dtcm -> {
                 this.addReference(api, dsModules.dtcm, true);
+            }
+            case Autoload -> {
+                int autoloadIndex = dsdRelocation.indices.getArray()[0];
+                this.addReference(api, dsModules.getAutoload(autoloadIndex), true);
             }
         }
     }
@@ -160,6 +175,14 @@ public class SyncRelocation {
             addressSpaceName.equals("dtcm.bss") ||
             addressSpaceName.equals("DTCM") ||
             addressSpaceName.equals("DTCM.bss");
+    }
+
+    private static int parseAutoloadIndex(String blockName) {
+        int sectionStartIndex = blockName.indexOf('.');
+        if (sectionStartIndex >= 0) {
+            blockName = blockName.substring(0, sectionStartIndex);
+        }
+        return DsModules.getAutoloadIndex(blockName);
     }
 
     private static int parseOverlayNumber(String blockName) {

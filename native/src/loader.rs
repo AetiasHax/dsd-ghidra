@@ -50,8 +50,8 @@ impl SafeDsRomLoaderData {
                 name: match autoload.kind() {
                     AutoloadKind::Itcm => "itcm".into(),
                     AutoloadKind::Dtcm => "dtcm".into(),
-                    AutoloadKind::Unknown(autoload_info) => {
-                        format!("autoload_{:08x}", autoload_info.base_address)
+                    AutoloadKind::Unknown(index) => {
+                        format!("autoload_{}", index)
                     }
                 },
             })

@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use ds_decomp::config::{
     config::{Config, ConfigModule},
     delinks::Delinks,
-    module::{Module, ModuleKind},
+    module::{Module, ModuleKind, OverlayModuleOptions},
     relocations::{RelocationKind, RelocationModule, Relocations},
     section::{Section, SectionKind},
     symbol::{SymData, SymbolKind, SymbolMap},
@@ -32,6 +32,7 @@ pub struct SafeDsdSyncModule {
 
 pub struct SafeDsdSyncAutoload {
     kind: DsdSyncAutoloadKind,
+    index: u32,
     module: SafeDsdSyncModule,
 }
 
@@ -80,7 +81,7 @@ pub struct SafeDsdSyncRelocation {
     to: u32,
     kind: RelocationKind,
     module: DsdSyncRelocationModule,
-    overlays: Vec<u16>,
+    indices: Vec<u16>,
     conditional: bool,
 }
 
@@ -92,10 +93,17 @@ impl SafeDsdConfigData {
 
         let rom = Rom::load(
             config_path.join(&config.rom_config),
-            RomLoadOptions { key: None, compress: false, encrypt: false, load_files: false },
+            RomLoadOptions {
+                key: None,
+                compress: false,
+                encrypt: false,
+                load_files: false,
+                load_banner: false,
+                load_header: false,
+            },
         )?;
 
-        let arm9 = SafeDsdSyncModule::new(ModuleKind::Arm9, config_path, &config.main_module, rom.arm9().code()?)?;
+        let arm9 = SafeDsdSyncModule::new(ModuleKind::Arm9, config_path, &config.main_module, rom.arm9().code()?, false)?;
         let rom_autoloads = rom.arm9().autoloads()?;
         let autoloads = config
             .autoloads
@@ -107,13 +115,22 @@ impl SafeDsdConfigData {
                     .with_context(|| format!("Autoload {} not present in ROM", autoload.kind))?
                     .code();
 
+                let index = if let AutoloadKind::Unknown(index) = autoload.kind { index } else { 0 };
+
                 Ok(SafeDsdSyncAutoload {
                     kind: match autoload.kind {
                         AutoloadKind::Itcm => DsdSyncAutoloadKind::Itcm,
                         AutoloadKind::Dtcm => DsdSyncAutoloadKind::Dtcm,
                         AutoloadKind::Unknown(_) => DsdSyncAutoloadKind::Unknown,
                     },
-                    module: SafeDsdSyncModule::new(ModuleKind::Autoload(autoload.kind), config_path, &autoload.module, code)?,
+                    index,
+                    module: SafeDsdSyncModule::new(
+                        ModuleKind::Autoload(autoload.kind),
+                        config_path,
+                        &autoload.module,
+                        code,
+                        false,
+                    )?,
                 })
             })
             .collect::<Result<_>>()?;
@@ -124,7 +141,13 @@ impl SafeDsdConfigData {
                 let code = rom.arm9_overlays()[overlay.id as usize].code();
                 Ok(SafeDsdSyncOverlay {
                     id: overlay.id,
-                    module: SafeDsdSyncModule::new(ModuleKind::Overlay(overlay.id), config_path, &overlay.module, code)?,
+                    module: SafeDsdSyncModule::new(
+                        ModuleKind::Overlay(overlay.id),
+                        config_path,
+                        &overlay.module,
+                        code,
+                        overlay.signed,
+                    )?,
                 })
             })
             .collect::<Result<_>>()?;
@@ -151,6 +174,7 @@ impl SafeDsdSyncModule {
         root_path: P,
         config_module: &ConfigModule,
         code: &[u8],
+        signed: bool,
     ) -> Result<Self> {
         let root_path = root_path.as_ref();
 
@@ -160,9 +184,13 @@ impl SafeDsdSyncModule {
 
         let module = match module_kind {
             ModuleKind::Arm9 => Module::new_arm9(config_module.name.clone(), &mut symbol_map, relocs, delinks.sections, code),
-            ModuleKind::Overlay(id) => {
-                Module::new_overlay(config_module.name.clone(), &mut symbol_map, relocs, delinks.sections, id, code)
-            }
+            ModuleKind::Overlay(id) => Module::new_overlay(
+                config_module.name.clone(),
+                &mut symbol_map,
+                relocs,
+                delinks.sections,
+                OverlayModuleOptions { id, code, signed },
+            ),
             ModuleKind::Autoload(kind) => {
                 Module::new_autoload(config_module.name.clone(), &mut symbol_map, relocs, delinks.sections, kind, code)
             }
@@ -200,7 +228,7 @@ impl TryIntoUnsafe for SafeDsdSyncAutoload {
     type UnsafeType = DsdSyncAutoload;
 
     fn try_into_unsafe(self) -> Result<Self::UnsafeType> {
-        Ok(DsdSyncAutoload { kind: self.kind, module: self.module.try_into_unsafe()? })
+        Ok(DsdSyncAutoload { kind: self.kind, index: self.index, module: self.module.try_into_unsafe()? })
     }
 }
 
@@ -314,13 +342,14 @@ impl SafeDsdSyncSection {
             .relocations()
             .iter_range(section.address_range())
             .map(|(_, relocation)| {
-                let (reloc_module, overlays) = match relocation.module() {
+                let (reloc_module, indices) = match relocation.module() {
                     RelocationModule::None => (DsdSyncRelocationModule::None, vec![]),
                     RelocationModule::Overlay { id } => (DsdSyncRelocationModule::Overlays, vec![*id]),
                     RelocationModule::Overlays { ids } => (DsdSyncRelocationModule::Overlays, ids.clone()),
                     RelocationModule::Main => (DsdSyncRelocationModule::Main, vec![]),
                     RelocationModule::Itcm => (DsdSyncRelocationModule::Itcm, vec![]),
                     RelocationModule::Dtcm => (DsdSyncRelocationModule::Dtcm, vec![]),
+                    RelocationModule::Autoload { index } => (DsdSyncRelocationModule::Autoload, vec![*index as u16]),
                 };
                 let conditional = match relocation.kind() {
                     RelocationKind::ArmCall | RelocationKind::ArmCallThumb | RelocationKind::ArmBranch => {
@@ -339,7 +368,7 @@ impl SafeDsdSyncSection {
                     to: (relocation.to_address() as i32 + relocation.addend_value()) as u32,
                     kind: relocation.kind(),
                     module: reloc_module,
-                    overlays,
+                    indices,
                     conditional,
                 }
             })
@@ -421,7 +450,7 @@ impl TryIntoUnsafe for SafeDsdSyncRelocation {
             to: self.to,
             kind: self.kind,
             module: self.module,
-            overlays: self.overlays.try_into_unsafe()?,
+            overlays: self.indices.try_into_unsafe()?,
             conditional: self.conditional.into(),
         })
     }
@@ -447,6 +476,7 @@ pub struct DsdSyncModule {
 #[derive(Clone)]
 pub struct DsdSyncAutoload {
     kind: DsdSyncAutoloadKind,
+    index: u32,
     module: DsdSyncModule,
 }
 
@@ -545,6 +575,7 @@ pub enum DsdSyncRelocationModule {
     Main,
     Itcm,
     Dtcm,
+    Autoload,
 }
 
 impl TryIntoSafe for DsdSyncData {
@@ -575,7 +606,7 @@ impl TryIntoSafe for DsdSyncAutoload {
     type SafeType = SafeDsdSyncAutoload;
 
     unsafe fn try_into_safe(self) -> Result<Self::SafeType> {
-        Ok(SafeDsdSyncAutoload { kind: self.kind, module: self.module.try_into_safe()? })
+        Ok(SafeDsdSyncAutoload { kind: self.kind, index: self.index, module: self.module.try_into_safe()? })
     }
 }
 
@@ -677,7 +708,7 @@ impl TryIntoSafe for DsdSyncRelocation {
             to: self.to,
             kind: self.kind,
             module: self.module,
-            overlays: self.overlays.try_into_safe()?,
+            indices: self.overlays.try_into_safe()?,
             conditional: self.conditional.into(),
         })
     }

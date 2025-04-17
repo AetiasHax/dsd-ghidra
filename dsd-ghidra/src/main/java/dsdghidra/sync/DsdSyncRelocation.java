@@ -13,7 +13,7 @@ public class DsdSyncRelocation extends Structure {
     public int to;
     public byte kind;
     public int module;
-    public UnsafeU16List overlays;
+    public UnsafeU16List indices;
     public boolean conditional;
 
     public DsdSyncRelocation() {
@@ -26,7 +26,7 @@ public class DsdSyncRelocation extends Structure {
 
     @Override
     protected List<String> getFieldOrder() {
-        return List.of("from", "to", "kind", "module", "overlays", "conditional");
+        return List.of("from", "to", "kind", "module", "indices", "conditional");
     }
 
     public DsdRelocationKind getKind() {
@@ -44,7 +44,7 @@ public class DsdSyncRelocation extends Structure {
             ", to=" + Integer.toHexString(to) +
             ", kind=" + getKind() +
             ", module=" + getModule() +
-            ", overlays=" + Arrays.toString(overlays.getArray()) +
+            ", overlays=" + Arrays.toString(indices.getArray()) +
             ", conditional=" + conditional +
             '}';
     }
