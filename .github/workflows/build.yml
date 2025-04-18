@@ -19,9 +19,14 @@ jobs:
             target: x86_64-unknown-linux-gnu
             file: libdsd_ghidra.so
 
-          - os: macos-latest
+          - os: macos-13
             name: darwin-x86_64
             target: x86_64-apple-darwin
+            file: libdsd_ghidra.dylib
+
+          - os: macos-latest
+            name: darwin-arm64
+            target: aarch64-apple-darwin
             file: libdsd_ghidra.dylib
 
     runs-on: ${{ matrix.os }}
