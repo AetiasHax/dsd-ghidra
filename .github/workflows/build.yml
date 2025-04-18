@@ -1,4 +1,6 @@
 name: Build dsd-ghidra
+permissions:
+  contents: write
 on:
   release:
     types: [published]
