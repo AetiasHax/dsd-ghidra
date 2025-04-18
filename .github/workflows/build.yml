@@ -24,6 +24,11 @@ jobs:
             target: x86_64-apple-darwin
             file: libdsd_ghidra.dylib
 
+          - os: macos-latest
+            name: darwin-arm64
+            target: aarch64-apple-darwin
+            file: libdsd_ghidra.dylib
+
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
