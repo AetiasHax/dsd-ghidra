@@ -9,6 +9,7 @@ import dialog.DsdConfigChooser;
 import dsdghidra.DsdGhidra;
 import dsdghidra.DsdGhidraPlugin;
 import dsdghidra.sync.*;
+import dsdghidra.util.DsdError;
 import ghidra.app.script.GhidraScript;
 import ghidra.framework.store.LockException;
 import ghidra.program.database.function.OverlappingFunctionException;
@@ -55,15 +56,21 @@ public class SyncDsd extends GhidraScript {
         }
         dryRun = dsdConfigChooser.isDryRun();
 
+        DsdError dsdError = new DsdError();
         DsdSyncData dsdSyncData = new DsdSyncData();
-        if (!DsdGhidra.INSTANCE.get_dsd_sync_data(file.getPath(), dsdSyncData)) {
-            throw new IOException("Failed to get sync data from dsd-ghidra");
+        if (!DsdGhidra.INSTANCE.get_dsd_sync_data(file.getPath(), dsdSyncData, dsdError.memory)) {
+            String errorMessage = "Failed to get sync data from dsd-ghidra:\n\n" + dsdError.getString() + "\n";
+            DsdGhidra.INSTANCE.free_error(dsdError.memory);
+            throw new IOException(errorMessage);
         }
 
         try {
             this.doSync(dsdSyncData);
         } finally {
-            DsdGhidra.INSTANCE.free_dsd_sync_data(dsdSyncData);
+            if (!DsdGhidra.INSTANCE.free_dsd_sync_data(dsdSyncData, dsdError.memory)) {
+                this.printerr("Failed to free sync data from dsd-ghidra:\n" + dsdError.getString());
+            }
+            DsdGhidra.INSTANCE.free_error(dsdError.memory);
         }
     }
 

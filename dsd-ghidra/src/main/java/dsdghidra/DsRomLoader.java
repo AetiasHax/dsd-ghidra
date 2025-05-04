@@ -25,6 +25,7 @@ import dsdghidra.loader.DsIoRegister;
 import dsdghidra.loader.DsLoaderModule;
 import dsdghidra.loader.DsMemoryRegion;
 import dsdghidra.loader.DsRomLoaderData;
+import dsdghidra.util.DsdError;
 import ghidra.app.util.Option;
 import ghidra.app.util.bin.ByteProvider;
 import ghidra.app.util.importer.MessageLog;
@@ -69,9 +70,12 @@ public class DsRomLoader extends AbstractProgramWrapperLoader {
         TaskMonitor monitor, MessageLog log
     ) throws CancelledException, IOException {
         byte[] bytes = provider.readBytes(0, provider.length());
+        DsdError dsdError = new DsdError();
         DsRomLoaderData data = new DsRomLoaderData();
-        if (!DsdGhidra.INSTANCE.get_loader_data(bytes, bytes.length, data)) {
-            throw new IOException("Failed to get ROM data from dsd-ghidra");
+        if (!DsdGhidra.INSTANCE.get_loader_data(bytes, bytes.length, data, dsdError.memory)) {
+            String errorMessage = "Failed to get ROM data from dsd-ghidra:\n\n" + dsdError.getString() + "\n";
+            DsdGhidra.INSTANCE.free_error(dsdError.memory);
+            throw new IOException(errorMessage);
         }
 
         OptionDialogBuilder dialogBuilder = new OptionDialogBuilder();
@@ -99,7 +103,10 @@ public class DsRomLoader extends AbstractProgramWrapperLoader {
         } catch (CreateMemoryBlockFailedException | CreateLabelFailedException e) {
             throw new IOException(e.getMessage());
         } finally {
-            DsdGhidra.INSTANCE.free_loader_data(data);
+            if (!DsdGhidra.INSTANCE.free_loader_data(data, dsdError.memory)) {
+                log.appendMsg("Failed to free ROM data from dsd-ghidra:\n" + dsdError.getString());
+            }
+            DsdGhidra.INSTANCE.free_error(dsdError.memory);
         }
     }
 
