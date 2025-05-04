@@ -182,7 +182,8 @@ public class SyncDsd extends GhidraScript {
         DuplicateNameException,
         CodeUnitInsertionException,
         CircularDependencyException,
-        OverlappingFunctionException {
+        OverlappingFunctionException,
+        CancelledException {
 
         SyncFunction syncFunction = new SyncFunction(currentProgram, dsSection, function);
 

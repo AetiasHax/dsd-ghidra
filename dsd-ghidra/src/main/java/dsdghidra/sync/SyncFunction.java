@@ -16,6 +16,7 @@ import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.util.CodeUnitInsertionException;
+import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
@@ -109,11 +110,13 @@ public class SyncFunction {
         return false;
     }
 
-    public void definePoolConstants(FlatProgramAPI api) throws CodeUnitInsertionException {
+    public void definePoolConstants(FlatProgramAPI api)
+    throws CodeUnitInsertionException, CancelledException {
         DataType undefined4Type = DataTypeUtil.getUndefined4();
 
         for (int poolConstant : dsdFunction.pool_constants.getArray()) {
             Address poolAddress = dsSection.getAddress(poolConstant);
+            api.clearListing(poolAddress);
             if (api.getDataAt(poolAddress) == null) {
                 api.createData(poolAddress, undefined4Type);
             }
