@@ -195,9 +195,9 @@ dependencies = [
 
 [[package]]
 name = "ds-rom"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b85ddd9ff7943051c4300fcb0c367f3a619dece86697aa688aef841c903f0328"
+checksum = "54c83565f49d5f2977904a3f70ff1b9d53ed81ddd46c4b0fffe880efdf334faf"
 dependencies = [
  "bitfield-struct",
  "bitreader",
@@ -579,9 +579,9 @@ checksum = "1dccffe3ce07af9386bfd29e80c0ab1a8205a2fc34e4bcd40364df902cfa8f3f"
 
 [[package]]
 name = "unarm"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dff0b9c752e29548c4bf614faa49a5f2d222c6333f9f70e3eb5cd84387f6a333"
+checksum = "5d3c067cc04aa3305d5b2a3796851d527bd0f2388d00e9b8f1ae7967f72f854a"
 
 [[package]]
 name = "unicode-ident"
