@@ -11,6 +11,10 @@ import dsdghidra.DsdGhidraPlugin;
 import dsdghidra.sync.*;
 import dsdghidra.util.DsdError;
 import ghidra.app.script.GhidraScript;
+import ghidra.app.script.GhidraState;
+import ghidra.framework.model.Project;
+import ghidra.framework.model.ProjectData;
+import ghidra.framework.model.ProjectLocator;
 import ghidra.framework.store.LockException;
 import ghidra.program.database.function.OverlappingFunctionException;
 import ghidra.program.model.lang.Register;
@@ -23,11 +27,15 @@ import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.util.exception.NotFoundException;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Properties;
 
 public class SyncDsd extends GhidraScript {
     private boolean dryRun = false;
+
+    private Properties properties;
 
     private Listing listing;
     private Register thumbRegister;
@@ -48,12 +56,18 @@ public class SyncDsd extends GhidraScript {
         this.dsModules = new DsModules(memory);
         //        this.println(this.dsModules.toString(0));
 
-        DsdConfigChooser dsdConfigChooser = new DsdConfigChooser(null, "Begin sync", propertiesFileParams);
+        loadProperties();
+
+        DsdConfigChooser dsdConfigChooser = new DsdConfigChooser(null, "Begin sync", this.properties);
         File file = dsdConfigChooser.getSelectedFile();
         dsdConfigChooser.dispose();
         if (dsdConfigChooser.wasCancelled()) {
             throw new CancelledException();
         }
+
+        this.properties.setProperty(DsdConfigChooser.LAST_CONFIG_KEY, file.getAbsolutePath());
+        saveProperties();
+
         dryRun = dsdConfigChooser.isDryRun();
 
         DsdError dsdError = new DsdError();
@@ -72,6 +86,35 @@ public class SyncDsd extends GhidraScript {
             }
             DsdGhidra.INSTANCE.free_error(dsdError.memory);
         }
+    }
+
+    private File getProjectLocation() {
+        GhidraState state = this.getState();
+        Project project = state.getProject();
+        ProjectData projectData = project.getProjectData();
+        ProjectLocator projectLocator = projectData.getProjectLocator();
+        return projectLocator.getProjectDir();
+    }
+
+    private File getPropertiesFile() {
+        File projectLocation = getProjectLocation();
+        Path propertiesPath = Paths.get(projectLocation.getAbsolutePath(), "SyncDsd.properties");
+        return propertiesPath.toFile();
+    }
+
+    private void loadProperties() {
+        File propertiesFile = getPropertiesFile();
+        this.properties = new Properties();
+        try {
+            this.properties.load(new FileInputStream(propertiesFile));
+        } catch (IOException ignored) {
+        }
+    }
+
+    private void saveProperties()
+    throws IOException {
+        File propertiesFile = getPropertiesFile();
+        this.properties.store(new FileOutputStream(propertiesFile), "Properties for the SyncDsd.java script");
     }
 
     private void doSync(DsdSyncData dsdSyncData)
