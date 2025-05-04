@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use ds_decomp::config::{
     config::{Config, ConfigModule},
     delinks::Delinks,
-    module::{Module, ModuleKind, OverlayModuleOptions},
+    module::{Module, ModuleKind, ModuleOptions},
     relocations::{RelocationKind, RelocationModule, Relocations},
     section::{Section, SectionKind},
     symbol::{SymData, SymbolKind, SymbolMap},
@@ -182,19 +182,17 @@ impl SafeDsdSyncModule {
         let delinks = Delinks::from_file(root_path.join(&config_module.delinks), module_kind)?;
         let relocs = Relocations::from_file(root_path.join(&config_module.relocations))?;
 
-        let module = match module_kind {
-            ModuleKind::Arm9 => Module::new_arm9(config_module.name.clone(), &mut symbol_map, relocs, delinks.sections, code),
-            ModuleKind::Overlay(id) => Module::new_overlay(
-                config_module.name.clone(),
-                &mut symbol_map,
-                relocs,
-                delinks.sections,
-                OverlayModuleOptions { id, code, signed },
-            ),
-            ModuleKind::Autoload(kind) => {
-                Module::new_autoload(config_module.name.clone(), &mut symbol_map, relocs, delinks.sections, kind, code)
-            }
-        }?;
+        let module = Module::new(
+            &mut symbol_map,
+            ModuleOptions {
+                kind: module_kind,
+                name: config_module.name.clone(),
+                relocations: relocs,
+                sections: delinks.sections,
+                code,
+                signed,
+            },
+        )?;
 
         let sections =
             module.sections().iter().map(|section| SafeDsdSyncSection::new(section, &module, &symbol_map)).collect::<Vec<_>>();
@@ -361,7 +359,7 @@ impl SafeDsdSyncSection {
                         ins.is_conditional()
                     }
                     RelocationKind::ThumbCall | RelocationKind::ThumbCallArm => false,
-                    RelocationKind::Load => false,
+                    RelocationKind::Load | RelocationKind::OverlayId => false,
                 };
                 SafeDsdSyncRelocation {
                     from: relocation.from_address(),

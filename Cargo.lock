@@ -87,9 +87,9 @@ dependencies = [
 
 [[package]]
 name = "bytemuck"
-version = "1.20.0"
+version = "1.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b37c88a63ffd85d15b406896cc343916d7cf57838a847b3a6f2ca5d39a5695a"
+checksum = "9134a6ef01ce4b366b50689c94f82c14bc72bc5d0386829828a2e2752ef7958c"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -181,10 +181,11 @@ dependencies = [
 
 [[package]]
 name = "ds-decomp"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23ecd9f22f55202d0f1f5db407d806aa9ae5a07c4e4d7cebc98326efe5f7abae"
+checksum = "b8e345e9fe46b7025800d8302dec65245039a26fc159817e2a52586bef655068"
 dependencies = [
+ "bytemuck",
  "ds-rom",
  "log",
  "serde",
