@@ -1,3 +1,6 @@
 [workspace]
 members = ["native"]
 resolver = "2"
+
+[profile.release]
+debug = "line-tables-only"
