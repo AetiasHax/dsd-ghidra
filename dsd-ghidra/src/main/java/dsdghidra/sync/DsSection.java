@@ -1,6 +1,7 @@
 package dsdghidra.sync;
 
 import dsdghidra.dsd.SectionKind;
+import ghidra.framework.store.ExclusiveCheckoutException;
 import ghidra.framework.store.LockException;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSpace;
@@ -46,14 +47,18 @@ public class DsSection {
     public record Split(DsSection first, DsSection second) {}
 
     public Split split(Memory memory, int address)
-    throws LockException, MemoryBlockException, NotFoundException {
+    throws ExclusiveCheckoutException, MemoryBlockException, NotFoundException {
         Address splitAddress = getAddress(address);
         if (splitAddress.equals(memoryBlock.getStart())) {
             // Split occurs on start address
             return new Split(null, this);
         }
 
-        memory.split(memoryBlock, splitAddress);
+        try {
+            memory.split(memoryBlock, splitAddress);
+        } catch (LockException e) {
+            throw new ExclusiveCheckoutException("Memory block split required! Go back to the Ghidra project window and checkout this program with exclusive access.");
+        }
         maxAddress = address;
 
         String name = memoryBlock.getName() + ".split";
@@ -62,12 +67,17 @@ public class DsSection {
     }
 
     public void join(Memory memory, DsSection section)
-    throws LockException, MemoryBlockException, NotFoundException {
+    throws ExclusiveCheckoutException, MemoryBlockException, NotFoundException {
         if (maxAddress + 1 != section.minAddress) {
             throw new MemoryBlockException("Sections are not contiguous");
         }
 
-        MemoryBlock joinedBlock = memory.join(memoryBlock, section.memoryBlock);
+        MemoryBlock joinedBlock;
+        try {
+            joinedBlock = memory.join(memoryBlock, section.memoryBlock);
+        } catch (LockException e) {
+            throw new ExclusiveCheckoutException("Memory block join required! Go back to the Ghidra project window and checkout this program with exclusive access.");
+        }
 
         maxAddress = section.maxAddress;
         memoryBlock = joinedBlock;

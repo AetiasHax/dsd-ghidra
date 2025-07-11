@@ -1,5 +1,6 @@
 package dsdghidra.sync;
 
+import ghidra.framework.store.ExclusiveCheckoutException;
 import ghidra.framework.store.LockException;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlockException;
@@ -47,12 +48,12 @@ public class SyncModule {
     }
 
     public void split()
-    throws LockException, MemoryBlockException, NotFoundException {
+    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
         dsModule.split(program, dsdModule);
     }
 
     public void join()
-    throws LockException, MemoryBlockException, NotFoundException {
+    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
         dsModule.join(program);
     }
 }

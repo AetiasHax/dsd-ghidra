@@ -15,6 +15,7 @@ import ghidra.app.script.GhidraState;
 import ghidra.framework.model.Project;
 import ghidra.framework.model.ProjectData;
 import ghidra.framework.model.ProjectLocator;
+import ghidra.framework.store.ExclusiveCheckoutException;
 import ghidra.framework.store.LockException;
 import ghidra.program.database.function.OverlappingFunctionException;
 import ghidra.program.model.lang.Register;
@@ -191,7 +192,7 @@ public class SyncDsd extends GhidraScript {
     }
 
     private void updateModule(DsdSyncModule module, DsModule dsModule)
-    throws LockException, MemoryBlockException, NotFoundException {
+    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
         SyncModule syncModule = new SyncModule(currentProgram, module, dsModule);
 
         if (syncModule.needsUpdate()) {

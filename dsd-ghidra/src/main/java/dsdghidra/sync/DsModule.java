@@ -1,5 +1,6 @@
 package dsdghidra.sync;
 
+import ghidra.framework.store.ExclusiveCheckoutException;
 import ghidra.framework.store.LockException;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
@@ -53,7 +54,7 @@ public class DsModule {
     }
 
     public void split(Program program, DsdSyncModule dsdModule)
-    throws LockException, MemoryBlockException, NotFoundException {
+    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
         if (isSplit()) {
             return;
         }
@@ -80,7 +81,7 @@ public class DsModule {
     }
 
     private void splitSection(Program program, DsSection section, List<DsdSyncSection> dsdSections)
-    throws LockException, MemoryBlockException, NotFoundException {
+    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
         if (section == null) {
             return;
         }
@@ -109,7 +110,7 @@ public class DsModule {
     }
 
     public void join(Program program)
-    throws LockException, MemoryBlockException, NotFoundException {
+    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
         if (!isSplit()) {
             return;
         }
@@ -135,7 +136,7 @@ public class DsModule {
     }
 
     private void joinSection(Program program, List<DsSection> dsSections, String combinedName)
-    throws LockException, MemoryBlockException, NotFoundException {
+    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
         Memory memory = program.getMemory();
 
         if (dsSections.isEmpty()) {
