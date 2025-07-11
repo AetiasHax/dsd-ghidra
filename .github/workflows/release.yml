@@ -19,6 +19,11 @@ jobs:
             file: libdsd_ghidra.so
 
           - os: macos-latest
+            name: darwin-aarch64
+            target: aarch64-apple-darwin
+            file: libdsd_ghidra.dylib
+
+          - os: macos-latest
             name: darwin-x86_64
             target: x86_64-apple-darwin
             file: libdsd_ghidra.dylib
