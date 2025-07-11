@@ -92,12 +92,14 @@ public class DsModule {
             DsdSyncSection dsdSection = dsdSections.get(i);
             DsdSyncSection nextDsdSection = dsdSections.get(i + 1);
 
-            DsSection splitSection = sectionToSplit.split(memory, nextDsdSection.base.start_address);
-            sectionToSplit.setName(dsdSection.base.name.getString());
-            sectionToSplit.setRwxFlags(dsdSection.base.getKind());
+            DsSection.Split splits = sectionToSplit.split(memory, nextDsdSection.base.start_address);
+            if (splits.first() != null) {
+                splits.first().setName(dsdSection.base.name.getString());
+                splits.first().setRwxFlags(dsdSection.base.getKind());
+                addSection(splits.first());
+            }
 
-            addSection(sectionToSplit);
-            sectionToSplit = splitSection;
+            sectionToSplit = splits.second();
         }
 
         DsdSyncSection lastDsdSection = dsdSections.getLast();

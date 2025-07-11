@@ -43,16 +43,22 @@ public class DsSection {
         return address >= minAddress && address < maxAddress;
     }
 
-    public DsSection split(Memory memory, int address)
+    public record Split(DsSection first, DsSection second) {}
+
+    public Split split(Memory memory, int address)
     throws LockException, MemoryBlockException, NotFoundException {
         Address splitAddress = getAddress(address);
+        if (splitAddress.equals(memoryBlock.getStart())) {
+            // Split occurs on start address
+            return new Split(null, this);
+        }
 
         memory.split(memoryBlock, splitAddress);
         maxAddress = address;
 
         String name = memoryBlock.getName() + ".split";
         MemoryBlock splitBlock = memory.getBlock(name);
-        return new DsSection(name, module, splitBlock);
+        return new Split(this, new DsSection(name, module, splitBlock));
     }
 
     public void join(Memory memory, DsSection section)
