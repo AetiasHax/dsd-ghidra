@@ -29,7 +29,7 @@ public class DsMemoryRegion {
         new DsMemoryRegion(0x03000000, 0x03004000, "swram"),
         new DsMemoryRegion(0x03800000, 0x03808000, "wram"),
         new DsMemoryRegion(0x04000000, 0x04001000, "io"),
-        new DsMemoryRegion(0x04800000, 0x04010000, "wifi"),
+        new DsMemoryRegion(0x04800000, 0x04810000, "wifi"),
         new DsMemoryRegion(0x06000000, 0x06040000, "vram"),
         new DsMemoryRegion(0x08000000, 0x0a000000, "gba_rom"),
         new DsMemoryRegion(0x0a000000, 0x0a010000, "gba_ram"),
