@@ -172,7 +172,7 @@ public class SyncDsd extends GhidraScript {
                 throw new Exception("Failed to find section '" + section.base.name.getString() + "' in module '" + dsModule.name + "'");
             }
 
-            this.updateSection(section, dsModule, dsSection);
+            this.updateSection(dsModule, dsSection);
             for (DsdSyncFunction function : section.getFunctions()) {
                 this.updateFunction(function, dsSection);
             }
@@ -201,11 +201,10 @@ public class SyncDsd extends GhidraScript {
         }
     }
 
-    private void updateSection(DsdSyncSection section, DsModule dsModule, DsSection dsSection) {
-        SyncSection syncSection = new SyncSection(currentProgram, section, dsSection, dsModule);
+    private void updateSection(DsModule dsModule, DsSection dsSection) {
+        SyncSection syncSection = new SyncSection(currentProgram, dsSection, dsModule);
 
         if (!dryRun) {
-            syncSection.removeComments();
             syncSection.addBookmark();
         }
     }
