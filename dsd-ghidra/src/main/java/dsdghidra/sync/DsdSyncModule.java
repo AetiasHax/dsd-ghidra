@@ -3,6 +3,7 @@ package dsdghidra.sync;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import dsdghidra.types.UnsafeList;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -15,21 +16,21 @@ public class DsdSyncModule extends Structure {
         super();
     }
 
-    public DsdSyncModule(Pointer p) {
+    public DsdSyncModule(@NotNull Pointer p) {
         super(p);
         this.read();
     }
 
     @Override
-    protected List<String> getFieldOrder() {
+    protected @NotNull List<String> getFieldOrder() {
         return List.of("base_address", "sections", "files");
     }
 
-    public DsdSyncSection[] getSections() {
+    public @NotNull DsdSyncSection[] getSections() {
         return sections.getArray(new DsdSyncSection[0], DsdSyncSection::new);
     }
 
-    public DsdSyncDelinkFile[] getFiles() {
+    public @NotNull DsdSyncDelinkFile[] getFiles() {
         return files.getArray(new DsdSyncDelinkFile[0], DsdSyncDelinkFile::new);
     }
 }

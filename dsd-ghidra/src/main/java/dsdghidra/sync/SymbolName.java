@@ -6,14 +6,18 @@ import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.InvalidInputException;
+import org.jetbrains.annotations.NotNull;
 
 public class SymbolName {
-    public final String symbol;
-    public final Namespace namespace;
-    public final String name;
+    public final @NotNull String symbol;
+    public final @NotNull Namespace namespace;
+    public final @NotNull String name;
 
-    public SymbolName(Program program, String symbol, Type type)
-            throws InvalidInputException, DuplicateNameException {
+    public SymbolName(
+        @NotNull Program program,
+        @NotNull String symbol,
+        @NotNull Type type
+    ) throws InvalidInputException, DuplicateNameException {
         String withoutParams = symbol;
         if (type == Type.FUNCTION) {
             int parenIndex = symbol.indexOf('(');
@@ -37,8 +41,10 @@ public class SymbolName {
         OTHER,
     }
 
-    private Namespace getOrCreateNamespace(Program program, String[] namespaces)
-            throws InvalidInputException, DuplicateNameException {
+    private Namespace getOrCreateNamespace(
+        @NotNull Program program,
+        @NotNull String[] namespaces
+    ) throws InvalidInputException, DuplicateNameException {
         SymbolTable symbolTable = program.getSymbolTable();
 
         Namespace parent = program.getGlobalNamespace();

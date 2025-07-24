@@ -5,16 +5,17 @@ import ghidra.framework.store.LockException;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryBlockException;
 import ghidra.util.exception.NotFoundException;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.List;
 
 public class SyncModule {
-    private final Program program;
-    private final DsdSyncModule dsdModule;
-    private final DsModule dsModule;
+    private final @NotNull Program program;
+    private final @NotNull DsdSyncModule dsdModule;
+    private final @NotNull DsModule dsModule;
 
-    public SyncModule(Program program, DsdSyncModule dsdModule, DsModule dsModule) {
+    public SyncModule(@NotNull Program program, @NotNull DsdSyncModule dsdModule, @NotNull DsModule dsModule) {
         this.program = program;
         this.dsdModule = dsdModule;
         this.dsModule = dsModule;
@@ -48,7 +49,7 @@ public class SyncModule {
     }
 
     public void split()
-    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
+        throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException, DsModule.Exception {
         dsModule.split(program, dsdModule);
     }
 

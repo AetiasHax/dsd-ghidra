@@ -2,6 +2,7 @@ package dsdghidra.sync;
 
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -10,14 +11,14 @@ public class DsdSyncDataRange extends Structure {
     public int end;
 
     @Override
-    protected List<String> getFieldOrder() {
+    protected @NotNull List<String> getFieldOrder() {
         return List.of("start", "end");
     }
 
     public DsdSyncDataRange() {
     }
 
-    public DsdSyncDataRange(Pointer p) {
+    public DsdSyncDataRange(@NotNull Pointer p) {
         super(p);
         this.read();
     }

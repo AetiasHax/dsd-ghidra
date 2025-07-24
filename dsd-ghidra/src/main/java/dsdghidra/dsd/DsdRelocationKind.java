@@ -1,6 +1,8 @@
 package dsdghidra.dsd;
 
 import ghidra.program.model.symbol.RefType;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public enum DsdRelocationKind {
     ArmCall,
@@ -10,9 +12,9 @@ public enum DsdRelocationKind {
     ArmBranch,
     Load;
 
-    public static final DsdRelocationKind[] VALUES = DsdRelocationKind.values();
+    public static final @NotNull DsdRelocationKind[] VALUES = DsdRelocationKind.values();
 
-    public RefType getRefType(boolean conditional) {
+    public @Nullable RefType getRefType(boolean conditional) {
         switch (this) {
             case ArmCall, ThumbCall, ArmCallThumb, ThumbCallArm -> {
                 return conditional ? RefType.CONDITIONAL_CALL : RefType.UNCONDITIONAL_CALL;

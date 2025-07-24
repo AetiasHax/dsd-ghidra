@@ -2,6 +2,8 @@ package dsdghidra.sync;
 
 import ghidra.program.model.data.BuiltInDataTypeManager;
 import ghidra.program.model.data.DataType;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public enum DsdSyncDataKind {
     Any,
@@ -9,7 +11,7 @@ public enum DsdSyncDataKind {
     Short,
     Word;
 
-    public static final DsdSyncDataKind[] VALUES = DsdSyncDataKind.values();
+    public static final @NotNull DsdSyncDataKind[] VALUES = DsdSyncDataKind.values();
 
     public int size() {
         switch (this) {
@@ -33,7 +35,7 @@ public enum DsdSyncDataKind {
         return this != DsdSyncDataKind.Any;
     }
 
-    public DataType asDataType() {
+    public @Nullable DataType asDataType() {
         BuiltInDataTypeManager dataTypeManager = BuiltInDataTypeManager.getDataTypeManager();
         switch (this) {
             case Any -> {

@@ -8,9 +8,10 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.mem.MemoryConflictException;
+import org.jetbrains.annotations.NotNull;
 
 public record DsMemoryRegion(int start, int end, String name) {
-    public static final DsMemoryRegion[] ARM9_REGIONS = {
+    public static final @NotNull DsMemoryRegion[] ARM9_REGIONS = {
         new DsMemoryRegion(0x03000000, 0x03004000, "swram"),
         new DsMemoryRegion(0x04000000, 0x04005000, "io"),
         new DsMemoryRegion(0x04100000, 0x04100020, "io_read"),
@@ -25,7 +26,7 @@ public record DsMemoryRegion(int start, int end, String name) {
         new DsMemoryRegion(0x0a000000, 0x0a010000, "gba_ram"),
     };
 
-    public static final DsMemoryRegion[] ARM7_REGIONS = {
+    public static final @NotNull DsMemoryRegion[] ARM7_REGIONS = {
         new DsMemoryRegion(0x03000000, 0x03004000, "swram"),
         new DsMemoryRegion(0x03800000, 0x03808000, "wram"),
         new DsMemoryRegion(0x04000000, 0x04001000, "io"),
@@ -39,8 +40,9 @@ public record DsMemoryRegion(int start, int end, String name) {
         return this.end - this.start;
     }
 
-    public void createBlock(FlatProgramAPI api)
-            throws AddressOverflowException, LockException, MemoryConflictException {
+    public void createBlock(
+        @NotNull FlatProgramAPI api
+    ) throws AddressOverflowException, LockException, MemoryConflictException {
         Program program = api.getCurrentProgram();
         Memory memory = program.getMemory();
         Address address = api.toAddr(this.start);

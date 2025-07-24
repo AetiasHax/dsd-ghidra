@@ -2,17 +2,19 @@ package dsdghidra.sync;
 
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
 public class DsModules {
-    public final DsModule main;
-    public final DsModule itcm;
-    public final DsModule dtcm;
-    private final DsModule[] autoloads;
-    private final DsModule[] overlays;
+    public final @NotNull DsModule main;
+    public final @NotNull DsModule itcm;
+    public final @NotNull DsModule dtcm;
+    private final @NotNull DsModule[] autoloads;
+    private final @NotNull DsModule[] overlays;
 
-    public DsModules(Memory memory) {
+    public DsModules(@NotNull Memory memory) {
         List<MemoryBlock> blockList = new ArrayList<>();
         Collections.addAll(blockList, memory.getBlocks());
 
@@ -51,15 +53,15 @@ public class DsModules {
         this.overlays = overlayList.toArray(new DsModule[0]);
     }
 
-    private static String findAutoload(List<MemoryBlock> blockList) {
+    private static @Nullable String findAutoload(@NotNull List<MemoryBlock> blockList) {
         return findBlock(blockList, "autoload_");
     }
 
-    private static String findOverlay(List<MemoryBlock> blockList) {
+    private static @Nullable String findOverlay(List<MemoryBlock> blockList) {
         return findBlock(blockList, "arm9_ov", "overlay_d_", "overlay_");
     }
 
-    private static String findBlock(List<MemoryBlock> blockList, String... prefixes) {
+    private static @Nullable String findBlock(@NotNull List<MemoryBlock> blockList, @NotNull String... prefixes) {
         for (MemoryBlock block : blockList) {
             String blockName = block.getName();
 
@@ -84,7 +86,7 @@ public class DsModules {
         return null;
     }
 
-    public static int getOverlayId(String moduleName) {
+    public static int getOverlayId(@NotNull String moduleName) {
         String overlayIdString = null;
         if (moduleName.startsWith("arm9_ov")) {
             overlayIdString = moduleName.substring(7);
@@ -101,7 +103,7 @@ public class DsModules {
         return Integer.parseInt(overlayIdString, 10);
     }
 
-    public static int getAutoloadIndex(String moduleName) {
+    public static int getAutoloadIndex(@NotNull String moduleName) {
         if (!moduleName.startsWith("autoload_")) {
             return -1;
         }
@@ -110,7 +112,10 @@ public class DsModules {
         return Integer.parseInt(addressString);
     }
 
-    private static DsModule constructModule(List<MemoryBlock> blockList, String... moduleNames) {
+    private static @NotNull DsModule constructModule(
+        @NotNull List<MemoryBlock> blockList,
+        @NotNull String... moduleNames
+    ) {
         DsModule module = new DsModule(moduleNames[0]);
         for (int i = blockList.size() - 1; i >= 0; i--) {
             MemoryBlock block = blockList.get(i);
@@ -148,21 +153,43 @@ public class DsModules {
     /**
      * Gets an autoload module other than ITCM and DTCM.
      */
-    public DsModule getAutoload(int index) {
+    public @Nullable DsModule getAutoload(int index) {
         if (index < 0 || index >= autoloads.length) {
             return null;
         }
         return autoloads[index];
     }
 
-    public DsModule getOverlay(int id) {
+    public @NotNull DsModule getRequiredAutoload(int index) throws Exception {
+        DsModule autoload = getAutoload(index);
+        if (autoload == null) {
+            throw new DsModules.Exception(String.format(
+                "Module for autoload %d not found",
+                index
+            ));
+        }
+        return autoload;
+    }
+
+    public @Nullable DsModule getOverlay(int id) {
         if (id < 0 || id >= overlays.length) {
             return null;
         }
         return overlays[id];
     }
 
-    public String toString(int indent) {
+    public @NotNull DsModule getRequiredOverlay(int id) throws DsModules.Exception {
+        DsModule overlay = getOverlay(id);
+        if (overlay == null) {
+            throw new DsModules.Exception(String.format(
+                "Module for overlay %d not found",
+                id
+            ));
+        }
+        return overlay;
+    }
+
+    public @NotNull String toString(int indent) {
         String pad = new String(new char[indent]).replace('\0', ' ');
         String pad2 = new String(new char[indent + 2]).replace('\0', ' ');
 
@@ -184,5 +211,11 @@ public class DsModules {
             pad2 + "overlays=[\n" + String.join(",\n", overlays) + "\n" +
             pad2 + "]\n" +
             pad + '}';
+    }
+
+    public static final class Exception extends java.lang.Exception {
+        public Exception(String message) {
+            super(message);
+        }
     }
 }

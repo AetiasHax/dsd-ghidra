@@ -3,6 +3,7 @@ package dsdghidra.sync;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import dsdghidra.types.UnsafeString;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -15,17 +16,17 @@ public class DsdSyncDataSymbol extends Structure {
     public DsdSyncDataSymbol() {
     }
 
-    public DsdSyncDataSymbol(Pointer p) {
+    public DsdSyncDataSymbol(@NotNull Pointer p) {
         super(p);
         this.read();
     }
 
     @Override
-    protected List<String> getFieldOrder() {
+    protected @NotNull List<String> getFieldOrder() {
         return List.of("name", "address", "kind", "count");
     }
 
-    public DsdSyncDataKind getKind() {
+    public @NotNull DsdSyncDataKind getKind() {
         return DsdSyncDataKind.VALUES[kind];
     }
 }

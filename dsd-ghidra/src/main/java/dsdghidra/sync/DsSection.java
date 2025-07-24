@@ -9,16 +9,18 @@ import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.mem.MemoryBlockException;
 import ghidra.util.exception.NotFoundException;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class DsSection {
-    private String name;
-    private final DsModule module;
-    private MemoryBlock memoryBlock;
-    public final AddressSpace addressSpace;
+    private @NotNull String name;
+    private final @NotNull DsModule module;
+    private @NotNull MemoryBlock memoryBlock;
+    public final @NotNull AddressSpace addressSpace;
     private final int minAddress;
     private int maxAddress;
 
-    public DsSection(String name, DsModule module, MemoryBlock memoryBlock) {
+    public DsSection(@NotNull String name, @NotNull DsModule module, @NotNull MemoryBlock memoryBlock) {
         this.name = name;
         this.module = module;
         this.memoryBlock = memoryBlock;
@@ -27,28 +29,45 @@ public class DsSection {
         this.maxAddress = (int) memoryBlock.getEnd().getOffset();
     }
 
-    public String toString() {
+    public @NotNull String toString() {
         int start = (int) memoryBlock.getStart().getOffset();
         int end = (int) memoryBlock.getEnd().getOffset();
         return Integer.toHexString(start) + ".." + Integer.toHexString(end);
     }
 
-    public Address getAddress(int offset) {
+    public @Nullable Address getAddress(int offset) {
         if (offset < minAddress || offset > maxAddress) {
             return null;
         }
         return addressSpace.getAddress(offset);
     }
 
+    public @NotNull Address getRequiredAddress(int offset) throws DsSection.Exception {
+        Address address = this.getAddress(offset);
+        if (address == null) {
+            throw new DsSection.Exception(String.format(
+                "The address %08x is out of bounds for section '%s' (%08x..%08x) in module '%s'",
+                offset,
+                this.name,
+                this.minAddress,
+                this.maxAddress,
+                this.module.name
+            ));
+        }
+        return address;
+    }
+
     public boolean contains(int address) {
         return address >= minAddress && address < maxAddress;
     }
 
-    public record Split(DsSection first, DsSection second) {}
+    public record Split(@Nullable DsSection first, @NotNull DsSection second) {}
 
-    public Split split(Memory memory, int address)
-    throws ExclusiveCheckoutException, MemoryBlockException, NotFoundException {
-        Address splitAddress = getAddress(address);
+    public @NotNull Split split(
+        @NotNull Memory memory,
+        int address
+    ) throws ExclusiveCheckoutException, MemoryBlockException, NotFoundException, Exception {
+        Address splitAddress = getRequiredAddress(address);
         if (splitAddress.equals(memoryBlock.getStart())) {
             // Split occurs on start address
             return new Split(null, this);
@@ -66,8 +85,10 @@ public class DsSection {
         return new Split(this, new DsSection(name, module, splitBlock));
     }
 
-    public void join(Memory memory, DsSection section)
-    throws ExclusiveCheckoutException, MemoryBlockException, NotFoundException {
+    public void join(
+        @NotNull Memory memory,
+        @NotNull DsSection section
+    ) throws ExclusiveCheckoutException, MemoryBlockException, NotFoundException {
         if (maxAddress + 1 != section.minAddress) {
             throw new MemoryBlockException("Sections are not contiguous");
         }
@@ -83,17 +104,17 @@ public class DsSection {
         memoryBlock = joinedBlock;
     }
 
-    public String getName() {
+    public @NotNull String getName() {
         return name;
     }
 
-    public void setName(String name)
+    public void setName(@NotNull String name)
     throws LockException {
         this.name = name;
         this.memoryBlock.setName(module.name + name);
     }
 
-    public MemoryBlock getMemoryBlock() {
+    public @NotNull MemoryBlock getMemoryBlock() {
         return memoryBlock;
     }
 
@@ -105,7 +126,7 @@ public class DsSection {
         return maxAddress;
     }
 
-    public boolean matches(DsdSyncSection dsdSyncSection) {
+    public boolean matches(@NotNull DsdSyncSection dsdSyncSection) {
         if (!name.equals(dsdSyncSection.base.name.getString())) {
             return false;
         }
@@ -129,7 +150,7 @@ public class DsSection {
         return true;
     }
 
-    public void setRwxFlags(SectionKind kind) {
+    public void setRwxFlags(@NotNull SectionKind kind) {
         memoryBlock.setWrite(kind.isWriteable());
         memoryBlock.setExecute(kind.isExecutable());
     }
@@ -138,6 +159,16 @@ public class DsSection {
         memoryBlock.setWrite(true);
         if (memoryBlock.isInitialized()) {
             memoryBlock.setExecute(true);
+        }
+    }
+
+    public @NotNull DsModule getModule() {
+        return module;
+    }
+
+    public static final class Exception extends java.lang.Exception {
+        public Exception(String message) {
+            super(message);
         }
     }
 }

@@ -12,18 +12,23 @@ import ghidra.program.model.symbol.SymbolType;
 import ghidra.program.model.util.CodeUnitInsertionException;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.InvalidInputException;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class SyncDataSymbol {
-    public final DsdSyncDataSymbol dsdDataSymbol;
-    public final SymbolName symbolName;
-    public final DsSection dsSection;
-    public final Address address;
-    private final Program program;
+    public final @NotNull DsdSyncDataSymbol dsdDataSymbol;
+    public final @NotNull SymbolName symbolName;
+    public final @NotNull DsSection dsSection;
+    public final @NotNull Address address;
+    private final @NotNull Program program;
 
-    public SyncDataSymbol(Program program, DsSection dsSection, DsdSyncDataSymbol dsdDataSymbol)
-    throws InvalidInputException, DuplicateNameException {
+    public SyncDataSymbol(
+        @NotNull Program program,
+        @NotNull DsSection dsSection,
+        @NotNull DsdSyncDataSymbol dsdDataSymbol
+    ) throws InvalidInputException, DuplicateNameException, DsSection.Exception {
         SymbolName symbolName = new SymbolName(program, dsdDataSymbol.name.getString(), SymbolName.Type.OTHER);
-        Address address = dsSection.getAddress(dsdDataSymbol.address);
+        Address address = dsSection.getRequiredAddress(dsdDataSymbol.address);
 
         this.dsdDataSymbol = dsdDataSymbol;
         this.symbolName = symbolName;
@@ -32,7 +37,7 @@ public class SyncDataSymbol {
         this.program = program;
     }
 
-    public String getCurrentLabel() {
+    public @Nullable String getCurrentLabel() {
         SymbolTable symbolTable = program.getSymbolTable();
         for (Symbol existingSymbol : symbolTable.getSymbols(address)) {
             if (existingSymbol.getSymbolType() == SymbolType.LABEL) {
@@ -81,7 +86,7 @@ public class SyncDataSymbol {
         symbolTable.createLabel(address, symbolName.name, symbolName.namespace, SourceType.USER_DEFINED);
     }
 
-    public void defineData(FlatProgramAPI api) {
+    public void defineData(@NotNull FlatProgramAPI api) {
         DsdSyncDataKind kind = dsdDataSymbol.getKind();
         if (kind.isDefined()) {
             DataType dataType = kind.asDataType();

@@ -2,6 +2,7 @@ package dsdghidra.sync;
 
 import com.sun.jna.Structure;
 import dsdghidra.types.UnsafeList;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -11,15 +12,15 @@ public class DsdSyncData extends Structure {
     public UnsafeList<DsdSyncOverlay> arm9_overlays;
 
     @Override
-    protected List<String> getFieldOrder() {
+    protected @NotNull List<String> getFieldOrder() {
         return List.of("arm9", "autoloads", "arm9_overlays");
     }
 
-    public DsdSyncAutoload[] getAutoloads() {
+    public @NotNull DsdSyncAutoload[] getAutoloads() {
         return autoloads.getArray(new DsdSyncAutoload[0], DsdSyncAutoload::new);
     }
 
-    public DsdSyncOverlay[] getArm9Overlays() {
+    public @NotNull DsdSyncOverlay[] getArm9Overlays() {
         return arm9_overlays.getArray(new DsdSyncOverlay[0], DsdSyncOverlay::new);
     }
 }

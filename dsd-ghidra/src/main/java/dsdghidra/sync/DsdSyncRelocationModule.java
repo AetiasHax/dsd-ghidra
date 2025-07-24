@@ -1,5 +1,7 @@
 package dsdghidra.sync;
 
+import org.jetbrains.annotations.NotNull;
+
 public enum DsdSyncRelocationModule {
     None,
     Overlays,
@@ -8,5 +10,5 @@ public enum DsdSyncRelocationModule {
     Dtcm,
     Autoload;
 
-    public static final DsdSyncRelocationModule[] VALUES = DsdSyncRelocationModule.values();
+    public static final @NotNull DsdSyncRelocationModule[] VALUES = DsdSyncRelocationModule.values();
 }

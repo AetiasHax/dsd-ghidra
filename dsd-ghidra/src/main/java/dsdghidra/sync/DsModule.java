@@ -6,6 +6,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlockException;
 import ghidra.util.exception.NotFoundException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -15,23 +16,23 @@ public class DsModule {
     public static final String COMBINED_CODE_KEY = "CODE";
     public static final String COMBINED_BSS_KEY = ".bss";
 
-    public final String name;
-    private final Map<String, DsSection> sectionMap;
+    public final @NotNull String name;
+    private final @NotNull Map<String, @NotNull DsSection> sectionMap;
 
-    public DsModule(String name) {
+    public DsModule(@NotNull String name) {
         this.name = name;
         this.sectionMap = new HashMap<>();
     }
 
-    public void addSection(DsSection section) {
+    public void addSection(@NotNull DsSection section) {
         sectionMap.put(section.getName(), section);
     }
 
-    private DsSection getSection(String name) {
+    private @Nullable DsSection getSection(@NotNull String name) {
         return sectionMap.get(name);
     }
 
-    public DsSection getSection(DsdSyncBaseSection section) {
+    public @Nullable DsSection getSection(@NotNull DsdSyncBaseSection section) {
         if (isSplit()) {
             return getSection(section.name.getString());
         }
@@ -46,7 +47,19 @@ public class DsModule {
         return null;
     }
 
-    public Collection<DsSection> getSections() {
+    public @NotNull DsSection getRequiredSection(@NotNull DsdSyncBaseSection section) throws DsModule.Exception {
+        DsSection dsSection = getSection(section);
+        if (dsSection == null) {
+            throw new DsModule.Exception(String.format(
+                "Failed to find section %s in module %s",
+                section.name,
+                name
+            ));
+        }
+        return dsSection;
+    }
+
+    public @NotNull Collection<DsSection> getSections() {
         return sectionMap.values();
     }
 
@@ -54,8 +67,10 @@ public class DsModule {
         return !sectionMap.containsKey(COMBINED_CODE_KEY);
     }
 
-    public void split(Program program, DsdSyncModule dsdModule)
-    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
+    public void split(
+        @NotNull Program program,
+        @NotNull DsdSyncModule dsdModule
+    ) throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException, Exception {
         if (isSplit()) {
             return;
         }
@@ -81,8 +96,11 @@ public class DsModule {
         splitSection(program, combinedBssSection, dsdBssSections);
     }
 
-    private void splitSection(Program program, DsSection section, List<DsdSyncSection> dsdSections)
-    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
+    private void splitSection(
+        @NotNull Program program,
+        @Nullable DsSection section,
+        @NotNull List<DsdSyncSection> dsdSections
+    ) throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException, Exception {
         if (section == null) {
             return;
         }
@@ -94,7 +112,18 @@ public class DsModule {
             DsdSyncSection dsdSection = dsdSections.get(i);
             DsdSyncSection nextDsdSection = dsdSections.get(i + 1);
 
-            DsSection.Split splits = sectionToSplit.split(memory, nextDsdSection.base.start_address);
+            DsSection.Split splits;
+            try {
+                splits = sectionToSplit.split(memory, nextDsdSection.base.start_address);
+            } catch (DsSection.Exception e) {
+                throw new DsModule.Exception(String.format(
+                    "Failed to split section %s at address %08x (after %s) in module %s",
+                    nextDsdSection.base.name.getString(),
+                    nextDsdSection.base.start_address,
+                    dsdSection.base.name.getString(),
+                    name
+                ), e);
+            }
             if (splits.first() != null) {
                 splits.first().setName(dsdSection.base.name.getString());
                 splits.first().setRwxFlags(dsdSection.base.getKind());
@@ -110,8 +139,9 @@ public class DsModule {
         addSection(sectionToSplit);
     }
 
-    public void join(Program program)
-    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
+    public void join(
+        @NotNull Program program
+    ) throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
         if (!isSplit()) {
             return;
         }
@@ -136,8 +166,11 @@ public class DsModule {
         joinSection(program, bssSections, COMBINED_BSS_KEY);
     }
 
-    private void joinSection(Program program, List<DsSection> dsSections, String combinedName)
-    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
+    private void joinSection(
+        @NotNull Program program,
+        @NotNull List<DsSection> dsSections,
+        @NotNull String combinedName
+    ) throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
         Memory memory = program.getMemory();
 
         if (dsSections.isEmpty()) {
@@ -156,7 +189,7 @@ public class DsModule {
         addSection(sectionToJoin);
     }
 
-    public String toString(int indent) {
+    public @NotNull String toString(int indent) {
         String pad = new String(new char[indent]).replace('\0', ' ');
         String pad2 = new String(new char[indent + 2]).replace('\0', ' ');
         String pad4 = new String(new char[indent + 4]).replace('\0', ' ');
@@ -164,20 +197,41 @@ public class DsModule {
         List<String> sections = this.sectionMap
             .entrySet()
             .stream()
-            .map(entry -> pad4 + entry.getKey() + ": " + entry.getValue().toString())
+            .map(entry -> pad4 + entry.getKey() + ": " + entry.getValue())
             .toList();
 
         return pad + "DsModule{\n" + pad2 + "name=" + name + ",\n" + pad2 + "sectionMap={\n" +
             String.join(",\n", sections) + "\n" + pad2 + "}\n" + pad + "}";
     }
 
-    @Nullable
-    public DsSection getSectionContaining(int address) {
+    public @Nullable DsSection getSectionContaining(int address) {
         for (DsSection section : sectionMap.values()) {
             if (section.contains(address)) {
                 return section;
             }
         }
         return null;
+    }
+
+    public @NotNull DsSection getRequiredSectionContaining(int address) throws DsSection.Exception {
+        DsSection section = this.getSectionContaining(address);
+        if (section == null) {
+            throw new DsSection.Exception(String.format(
+                "No section found at address %08x in module '%s'",
+                address,
+                this.name
+            ));
+        }
+        return section;
+    }
+
+    public static final class Exception extends java.lang.Exception {
+        public Exception(String message) {
+            super(message);
+        }
+
+        public Exception(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 }

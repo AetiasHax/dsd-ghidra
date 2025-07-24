@@ -18,6 +18,7 @@ import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.mem.MemoryConflictException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
+import org.jetbrains.annotations.NotNull;
 
 public class DsLoaderModule extends Structure {
     public UnsafeU8List bytes;
@@ -29,13 +30,13 @@ public class DsLoaderModule extends Structure {
         super();
     }
 
-    public DsLoaderModule(Pointer pointer) {
+    public DsLoaderModule(@NotNull Pointer pointer) {
         super(pointer);
         this.read();
     }
 
     @Override
-    protected List<String> getFieldOrder() {
+    protected @NotNull List<String> getFieldOrder() {
         return List.of("bytes", "base_address", "bss_size", "name");
     }
 
@@ -46,22 +47,26 @@ public class DsLoaderModule extends Structure {
         return this.bytes.getArray();
     }
 
-    public String getName() {
+    public @NotNull String getName() {
         return this.name.getString();
     }
 
-    public void createBlock(FlatProgramAPI api) throws LockException, IllegalArgumentException,
-            MemoryConflictException, AddressOverflowException, CancelledException {
+    public void createBlock(
+        @NotNull FlatProgramAPI api
+    ) throws LockException, IllegalArgumentException, MemoryConflictException, AddressOverflowException, CancelledException {
         this.createBlock(api, false);
     }
 
-    public void createOverlayBlock(FlatProgramAPI api) throws LockException, IllegalArgumentException,
-            MemoryConflictException, AddressOverflowException, CancelledException {
+    public void createOverlayBlock(
+        @NotNull FlatProgramAPI api
+    ) throws LockException, IllegalArgumentException, MemoryConflictException, AddressOverflowException, CancelledException {
         this.createBlock(api, true);
     }
 
-    private void createBlock(FlatProgramAPI api, boolean overlay) throws LockException, IllegalArgumentException,
-            MemoryConflictException, AddressOverflowException, CancelledException {
+    private void createBlock(
+        @NotNull FlatProgramAPI api,
+        boolean overlay
+    ) throws LockException, IllegalArgumentException, MemoryConflictException, AddressOverflowException, CancelledException {
         Program program = api.getCurrentProgram();
         TaskMonitor monitor = api.getMonitor();
         Memory memory = program.getMemory();

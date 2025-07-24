@@ -15,24 +15,18 @@ import ghidra.app.script.GhidraState;
 import ghidra.framework.model.Project;
 import ghidra.framework.model.ProjectData;
 import ghidra.framework.model.ProjectLocator;
-import ghidra.framework.store.ExclusiveCheckoutException;
-import ghidra.framework.store.LockException;
-import ghidra.program.database.function.OverlappingFunctionException;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.Memory;
-import ghidra.program.model.mem.MemoryBlockException;
-import ghidra.program.model.util.CodeUnitInsertionException;
 import ghidra.util.exception.CancelledException;
-import ghidra.util.exception.DuplicateNameException;
-import ghidra.util.exception.InvalidInputException;
-import ghidra.util.exception.NotFoundException;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
 
+@SuppressWarnings("unused")
 public class SyncDsd extends GhidraScript {
     private boolean dryRun = false;
 
@@ -115,8 +109,7 @@ public class SyncDsd extends GhidraScript {
         this.properties.store(new FileOutputStream(propertiesFile), "Properties for the SyncDsd.java script");
     }
 
-    private void doSync(DsdSyncData dsdSyncData)
-    throws Exception {
+    private void doSync(DsdSyncData dsdSyncData) {
         if (!dryRun) {
             this.removeBookmarks();
         }
@@ -129,8 +122,11 @@ public class SyncDsd extends GhidraScript {
                 case Unknown -> {
                     DsModule dsModule = dsModules.getAutoload(autoload.index);
                     if (dsModule == null) {
-                        throw new Exception("No memory blocks for unknown autoload at base address " +
-                            Integer.toHexString(autoload.module.base_address));
+                        printerr(String.format(
+                            "No memory blocks for unknown autoload at %08x",
+                            autoload.module.base_address
+                        ));
+                        return;
                     }
                     this.syncModule(autoload.module, dsModule);
                 }
@@ -139,7 +135,11 @@ public class SyncDsd extends GhidraScript {
         for (DsdSyncOverlay overlay : dsdSyncData.getArm9Overlays()) {
             DsModule dsModule = dsModules.getOverlay(overlay.id);
             if (dsModule == null) {
-                throw new Exception("No memory blocks for overlay " + overlay.id);
+                printerr(String.format(
+                    "No memory blocks for overlay %d",
+                    overlay.id
+                ));
+                return;
             }
             this.syncModule(overlay.module, dsModule);
         }
@@ -158,18 +158,29 @@ public class SyncDsd extends GhidraScript {
         }
     }
 
-    private void syncModule(DsdSyncModule dsdSyncModule, DsModule dsModule)
-    throws Exception {
-        this.updateModule(dsdSyncModule, dsModule);
+    private void syncModule(DsdSyncModule dsdSyncModule, @NotNull DsModule dsModule) {
+        try {
+            this.updateModule(dsdSyncModule, dsModule);
+        } catch (Exception e) {
+            printerr(String.format(
+                "Failed to update module %s, see error:\n%s",
+                dsModule.name,
+                e
+            ));
+            return;
+        }
 
         for (DsdSyncSection section : dsdSyncModule.getSections()) {
             if (section.base.isEmpty()) {
                 continue;
             }
 
-            DsSection dsSection = dsModule.getSection(section.base);
-            if (dsSection == null) {
-                throw new Exception("Failed to find section '" + section.base.name.getString() + "' in module '" + dsModule.name + "'");
+            DsSection dsSection;
+            try {
+                dsSection = dsModule.getRequiredSection(section.base);
+            } catch (DsModule.Exception e) {
+                printerr(e.toString());
+                return;
             }
 
             this.updateSection(dsModule, dsSection);
@@ -188,15 +199,32 @@ public class SyncDsd extends GhidraScript {
         }
     }
 
-    private void updateModule(DsdSyncModule module, DsModule dsModule)
-    throws LockException, MemoryBlockException, NotFoundException, ExclusiveCheckoutException {
+    private void updateModule(DsdSyncModule module, DsModule dsModule) {
         SyncModule syncModule = new SyncModule(currentProgram, module, dsModule);
 
         if (syncModule.needsUpdate()) {
             this.println("Updating sections in module '" + dsModule.name + "'");
             if (!dryRun) {
-                syncModule.join();
-                syncModule.split();
+                try {
+                    syncModule.join();
+                } catch (Exception e) {
+                    printerr(String.format(
+                        "Failed to join module %s, see error:\n%s",
+                        dsModule.name,
+                        e
+                    ));
+                    return;
+                }
+                try {
+                    syncModule.split();
+                } catch (Exception e) {
+                    printerr(String.format(
+                        "Failed to split module %s, see error:\n%s",
+                        dsModule.name,
+                        e
+                    ));
+                    return;
+                }
             }
         }
     }
@@ -212,20 +240,33 @@ public class SyncDsd extends GhidraScript {
     private void updateDelinkFile(DsdSyncDelinkFile delinkFile, DsModule dsModule) {
         SyncDelinkFile syncDelinkFile = new SyncDelinkFile(currentProgram, delinkFile, dsModule);
         if (!dryRun) {
-            syncDelinkFile.addBookmarks();
+            try {
+                syncDelinkFile.addBookmarks();
+            } catch (Exception e) {
+                printerr(String.format(
+                    "Failed to add bookmarks for delink files in %s",
+                    dsModule.name
+                ));
+                return;
+            }
         }
     }
 
-    private void updateFunction(DsdSyncFunction function, DsSection dsSection)
-    throws
-        InvalidInputException,
-        DuplicateNameException,
-        CodeUnitInsertionException,
-        CircularDependencyException,
-        OverlappingFunctionException,
-        CancelledException {
+    private void updateFunction(DsdSyncFunction function, DsSection dsSection) {
 
-        SyncFunction syncFunction = new SyncFunction(currentProgram, dsSection, function);
+        SyncFunction syncFunction;
+        try {
+            syncFunction = new SyncFunction(currentProgram, dsSection, function);
+        } catch (Exception e) {
+            printerr(String.format(
+                "Failed to get function '%s' at %08x in %s, see error:\n%s",
+                function.name.getString(),
+                function.start,
+                dsSection.getModule().name,
+                e
+            ));
+            return;
+        }
 
         Function ghidraFunction = syncFunction.getExistingGhidraFunction();
         if (ghidraFunction == null) {
@@ -233,7 +274,18 @@ public class SyncDsd extends GhidraScript {
             println("Adding function " + syncFunction.symbolName.symbol + " (" + mode + ") at " + syncFunction.start);
 
             if (!dryRun) {
-                syncFunction.createGhidraFunction(monitor);
+                try {
+                    ghidraFunction = syncFunction.createGhidraFunction(monitor);
+                } catch (Exception e) {
+                    printerr(String.format(
+                        "Failed to create Ghidra function '%s' at %s in %s, see error:\n%s",
+                        syncFunction.symbolName.name,
+                        syncFunction.start,
+                        dsSection.getModule().name,
+                        e
+                    ));
+                    return;
+                }
             }
         } else {
             if (syncFunction.ghidraFunctionNeedsUpdate(ghidraFunction)) {
@@ -241,23 +293,53 @@ public class SyncDsd extends GhidraScript {
                 if (!dryRun) {
                     try {
                         syncFunction.updateGhidraFunction(ghidraFunction);
-                    } catch (OverlappingFunctionException e) {
-                        this.printerr("Failed to update function size: " + e.getMessage());
+                    } catch (Exception e) {
+                        printerr(String.format(
+                            "Failed to update Ghidra function '%s' at %s in %s, see error:\n%s",
+                            ghidraFunction.getName(),
+                            syncFunction.start,
+                            dsSection.getModule().name,
+                            e
+                        ));
+                        return;
                     }
                 }
             }
         }
 
         if (!dryRun) {
-            syncFunction.definePoolConstants(this);
+            try {
+                syncFunction.definePoolConstants(this);
+            } catch (Exception e) {
+                printerr(String.format(
+                    "Failed to define pool constants in function '%s' at %s in %s, see error:\n%s",
+                    ghidraFunction.getName(),
+                    syncFunction.start,
+                    dsSection.getModule().name,
+                    e
+                ));
+                return;
+            }
             syncFunction.disassemble(thumbRegister, monitor);
             syncFunction.referPoolConstants(this);
         }
     }
 
-    private void updateData(DsdSyncDataSymbol dataSymbol, DsSection dsSection)
-    throws InvalidInputException, DuplicateNameException {
-        SyncDataSymbol syncDataSymbol = new SyncDataSymbol(currentProgram, dsSection, dataSymbol);
+    private void updateData(DsdSyncDataSymbol dataSymbol, DsSection dsSection) {
+        SyncDataSymbol syncDataSymbol;
+        try {
+            syncDataSymbol = new SyncDataSymbol(currentProgram, dsSection, dataSymbol);
+        } catch (Exception e) {
+            printerr(String.format(
+                "Failed to get data symbol '%s' at %08x in %s of %s, see error:\n%s",
+                dataSymbol.name.getString(),
+                dataSymbol.address,
+                dsSection.getName(),
+                dsSection.getModule().name,
+                e
+            ));
+            return;
+        }
 
         boolean needsUpdate = syncDataSymbol.checkNeedsUpdate();
         String currentName = syncDataSymbol.getCurrentLabel();
@@ -278,13 +360,36 @@ public class SyncDsd extends GhidraScript {
         }
 
         if (!dryRun) {
-            syncDataSymbol.createLabel();
+            try {
+                syncDataSymbol.createLabel();
+            } catch (Exception e) {
+                printerr(String.format(
+                    "Failed to create data symbol label '%s' at %s in section %s of %s, see error:\n%s",
+                    syncDataSymbol.symbolName.name,
+                    syncDataSymbol.address,
+                    dsSection.getName(),
+                    dsSection.getModule().name,
+                    e
+                ));
+            }
             syncDataSymbol.defineData(this);
         }
     }
 
     private void updateReferences(DsdSyncRelocation relocation, DsSection dsSection) {
-        SyncRelocation syncRelocation = new SyncRelocation(currentProgram, dsSection, relocation);
+        SyncRelocation syncRelocation;
+        try {
+            syncRelocation = new SyncRelocation(currentProgram, dsSection, relocation);
+        } catch (DsSection.Exception e) {
+            printerr(String.format(
+                "Failed to get relocation from %08x in section %s of %s, see error:\n%s",
+                relocation.from,
+                dsSection.getName(),
+                dsSection.getModule().name,
+                e
+            ));
+            return;
+        }
 
         if (syncRelocation.needsUpdate()) {
             println("Updating references from " + syncRelocation.from);
@@ -298,7 +403,18 @@ public class SyncDsd extends GhidraScript {
         }
 
         if (!dryRun) {
-            syncRelocation.addReferences(this, dsModules);
+            try {
+                syncRelocation.addReferences(this, dsModules);
+            } catch (Exception e) {
+                printerr(String.format(
+                    "Failed to add reference from %08x in section %s of %s, see error:\n%s",
+                    relocation.from,
+                    dsSection.getName(),
+                    dsSection.getModule().name,
+                    e
+                ));
+                return;
+            }
         }
     }
 }

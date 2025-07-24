@@ -10,14 +10,19 @@ import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.util.CodeUnitInsertionException;
+import org.jetbrains.annotations.NotNull;
 
 public class SyncRelocation {
-    public final DsdSyncRelocation dsdRelocation;
-    public final Address from;
-    private final Program program;
+    public final @NotNull DsdSyncRelocation dsdRelocation;
+    public final @NotNull Address from;
+    private final @NotNull Program program;
 
-    public SyncRelocation(Program program, DsSection dsSection, DsdSyncRelocation dsdRelocation) {
-        Address from = dsSection.getAddress(dsdRelocation.from);
+    public SyncRelocation(
+        @NotNull Program program,
+        @NotNull DsSection dsSection,
+        @NotNull DsdSyncRelocation dsdRelocation
+    ) throws DsSection.Exception {
+        Address from = dsSection.getRequiredAddress(dsdRelocation.from);
 
         this.dsdRelocation = dsdRelocation;
         this.from = from;
@@ -112,7 +117,7 @@ public class SyncRelocation {
         referenceManager.removeAllReferencesFrom(from);
     }
 
-    public void addReferences(FlatProgramAPI api, DsModules dsModules) {
+    public void addReferences(@NotNull FlatProgramAPI api, @NotNull DsModules dsModules) throws DsSection.Exception, DsModules.Exception {
         switch (dsdRelocation.getModule()) {
             case None -> {
             }
@@ -121,7 +126,7 @@ public class SyncRelocation {
                 for (int i = 0; i < array.length; i++) {
                     short id = array[i];
                     boolean primary = i == 0;
-                    this.addReference(api, dsModules.getOverlay(id), primary);
+                    this.addReference(api, dsModules.getRequiredOverlay(id), primary);
                 }
             }
             case Main -> this.addReference(api, dsModules.main, true);
@@ -129,16 +134,20 @@ public class SyncRelocation {
             case Dtcm -> this.addReference(api, dsModules.dtcm, true);
             case Autoload -> {
                 int autoloadIndex = dsdRelocation.indices.getArray()[0];
-                this.addReference(api, dsModules.getAutoload(autoloadIndex), true);
+                this.addReference(api, dsModules.getRequiredAutoload(autoloadIndex), true);
             }
         }
     }
 
-    private void addReference(FlatProgramAPI api, DsModule toModule, boolean primary) {
+    private void addReference(
+        @NotNull FlatProgramAPI api,
+        @NotNull DsModule toModule,
+        boolean primary
+    ) throws DsSection.Exception {
         ReferenceManager referenceManager = program.getReferenceManager();
         DataType undefined4Type = DataTypeUtil.getUndefined4();
 
-        DsSection dsSection = toModule.getSectionContaining(dsdRelocation.to);
+        DsSection dsSection = toModule.getRequiredSectionContaining(dsdRelocation.to);
         Address to = dsSection.getAddress(dsdRelocation.to);
 
         RefType refType = dsdRelocation.getKind().getRefType(dsdRelocation.conditional);
@@ -152,26 +161,26 @@ public class SyncRelocation {
         }
     }
 
-    private static boolean isMain(String addressSpaceName) {
+    private static boolean isMain(@NotNull String addressSpaceName) {
         return addressSpaceName.equals("arm9_main") ||
             addressSpaceName.equals("arm9_main.bss") ||
             addressSpaceName.equals("ARM9_Main_Memory") ||
             addressSpaceName.equals("ARM9_Main_Memory.bss");
     }
 
-    private static boolean isItcm(String addressSpaceName) {
+    private static boolean isItcm(@NotNull String addressSpaceName) {
         return addressSpaceName.equals("itcm") ||
             addressSpaceName.equals("ITCM");
     }
 
-    private static boolean isDtcm(String addressSpaceName) {
+    private static boolean isDtcm(@NotNull String addressSpaceName) {
         return addressSpaceName.equals("dtcm") ||
             addressSpaceName.equals("dtcm.bss") ||
             addressSpaceName.equals("DTCM") ||
             addressSpaceName.equals("DTCM.bss");
     }
 
-    private static int parseAutoloadIndex(String blockName) {
+    private static int parseAutoloadIndex(@NotNull String blockName) {
         int sectionStartIndex = blockName.indexOf('.');
         if (sectionStartIndex >= 0) {
             blockName = blockName.substring(0, sectionStartIndex);
@@ -179,7 +188,7 @@ public class SyncRelocation {
         return DsModules.getAutoloadIndex(blockName);
     }
 
-    private static int parseOverlayNumber(String blockName) {
+    private static int parseOverlayNumber(@NotNull String blockName) {
         int sectionStartIndex = blockName.indexOf('.');
         if (sectionStartIndex >= 0) {
             blockName = blockName.substring(0, sectionStartIndex);

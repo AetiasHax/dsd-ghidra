@@ -1,7 +1,9 @@
 package dsdghidra.loader;
 
+import org.jetbrains.annotations.NotNull;
+
 public record DsIoRegister(int address, String name) {
-    public static final DsIoRegister[] ARM9_REGS = {
+    public static final @NotNull DsIoRegister[] ARM9_REGS = {
         new DsIoRegister(0x04000000, "REG_DISPCNT"),
         new DsIoRegister(0x04000004, "REG_DISPSTAT"),
         new DsIoRegister(0x04000006, "REG_VCOUNT"),
@@ -203,7 +205,7 @@ public record DsIoRegister(int address, String name) {
         new DsIoRegister(0x04100010, "REG_CARD_DATA_READ"),
     };
 
-    public static final DsIoRegister[] ARM7_REGS = {
+    public static final @NotNull DsIoRegister[] ARM7_REGS = {
         new DsIoRegister(0x04000004, "REG_DISPCNT"),
         new DsIoRegister(0x04000006, "REG_VCOUNT"),
         new DsIoRegister(0x040000b0, "REG_DMA0SAD"),
@@ -344,7 +346,7 @@ public record DsIoRegister(int address, String name) {
         new DsIoRegister(0x04800000, "REG_WIFI"),
     };
 
-    public static final DsIoRegister[] BIOS_REGS = {
+    public static final @NotNull DsIoRegister[] BIOS_REGS = {
         new DsIoRegister(0x027ffc40, "BIOS_BOOT_INDICATOR"),
     };
 }

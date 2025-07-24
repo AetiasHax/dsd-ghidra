@@ -1,12 +1,14 @@
 package dsdghidra.dsd;
 
+import org.jetbrains.annotations.NotNull;
+
 public enum SectionKind {
     Code,
     Data,
     Rodata,
     Bss;
 
-    public static final SectionKind[] VALUES = SectionKind.values();
+    public static final @NotNull SectionKind[] VALUES = SectionKind.values();
 
     public boolean isBss() {
         return this == SectionKind.Bss;

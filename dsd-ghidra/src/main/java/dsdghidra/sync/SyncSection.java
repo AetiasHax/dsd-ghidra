@@ -4,27 +4,29 @@ package dsdghidra.sync;
 import dsdghidra.DsdGhidraPlugin;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class SyncSection {
-    private final Program program;
-    private final DsSection dsSection;
-    private final DsModule dsModule;
+    private final @NotNull Program program;
+    private final @NotNull DsSection dsSection;
+    private final @NotNull DsModule dsModule;
 
-    public SyncSection(Program program, DsSection dsSection, DsModule dsModule) {
+    public SyncSection(@NotNull Program program, @NotNull DsSection dsSection, @NotNull DsModule dsModule) {
         this.program = program;
         this.dsSection = dsSection;
         this.dsModule = dsModule;
     }
 
-    public Address getBookmarkAddress() {
+    public @Nullable Address getBookmarkAddress() {
         return dsSection.getAddress(dsSection.getMinAddress());
     }
 
-    private String getBookmarkCategory() {
+    private @NotNull String getBookmarkCategory() {
         return dsModule.name;
     }
 
-    private String getBookmarkComment() {
+    private @NotNull String getBookmarkComment() {
         return dsSection.getName();
     }
 

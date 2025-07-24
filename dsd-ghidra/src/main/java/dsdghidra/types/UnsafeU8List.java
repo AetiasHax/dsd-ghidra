@@ -2,6 +2,7 @@ package dsdghidra.types;
 
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -10,7 +11,7 @@ public class UnsafeU8List extends Structure {
     public int len;
 
     @Override
-    protected List<String> getFieldOrder() {
+    protected @NotNull List<String> getFieldOrder() {
         return List.of("ptr", "len");
     }
 

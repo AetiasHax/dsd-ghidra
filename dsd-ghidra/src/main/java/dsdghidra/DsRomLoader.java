@@ -40,6 +40,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.MemoryConflictException;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Uses dsd to load a DS ROM into a Ghidra project.
@@ -48,14 +49,14 @@ import ghidra.util.task.TaskMonitor;
 public class DsRomLoader extends AbstractProgramWrapperLoader {
 
     @Override
-    public String getName() {
+    public @NotNull String getName() {
         // Name the loader. This name must match the name of the loader in the .opinion
         // files.
         return "dsd-ghidra-loader";
     }
 
     @Override
-    public Collection<LoadSpec> findSupportedLoadSpecs(ByteProvider provider) throws IOException {
+    public @NotNull Collection<LoadSpec> findSupportedLoadSpecs(ByteProvider provider) throws IOException {
         byte[] bytes = provider.readBytes(0, provider.length());
         if (DsdGhidra.INSTANCE.is_valid_ds_rom(bytes, bytes.length)) {
             LanguageCompilerSpecPair languageCompiler = new LanguageCompilerSpecPair("ARM:LE:32:v5t", "default");
@@ -66,8 +67,13 @@ public class DsRomLoader extends AbstractProgramWrapperLoader {
     }
 
     @Override
-    protected void load(ByteProvider provider, LoadSpec loadSpec, List<Option> options, Program program,
-        TaskMonitor monitor, MessageLog log
+    protected void load(
+        ByteProvider provider,
+        LoadSpec loadSpec,
+        List<Option> options,
+        Program program,
+        TaskMonitor monitor,
+        MessageLog log
     ) throws CancelledException, IOException {
         byte[] bytes = provider.readBytes(0, provider.length());
         DsdError dsdError = new DsdError();
@@ -110,8 +116,10 @@ public class DsRomLoader extends AbstractProgramWrapperLoader {
         }
     }
 
-    private static void createArm9(DsRomLoaderData data, FlatProgramAPI api)
-    throws CancelledException, CreateMemoryBlockFailedException, CreateLabelFailedException {
+    private static void createArm9(
+        @NotNull DsRomLoaderData data,
+        @NotNull FlatProgramAPI api
+    ) throws CancelledException, CreateMemoryBlockFailedException, CreateLabelFailedException {
         try {
             data.arm9.createBlock(api);
             for (DsLoaderModule autoload : data.getAutoloads()) {
@@ -136,8 +144,10 @@ public class DsRomLoader extends AbstractProgramWrapperLoader {
         }
     }
 
-    private static void createArm7(DsRomLoaderData data, FlatProgramAPI api)
-    throws CancelledException, CreateMemoryBlockFailedException, CreateLabelFailedException {
+    private static void createArm7(
+        @NotNull DsRomLoaderData data,
+        @NotNull FlatProgramAPI api
+    ) throws CancelledException, CreateMemoryBlockFailedException, CreateLabelFailedException {
         try {
             data.arm7.createBlock(api);
             for (DsLoaderModule overlay : data.getArm7Overlays()) {

@@ -21,27 +21,31 @@ import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 import org.bouncycastle.util.Arrays;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.math.BigInteger;
-import java.util.Objects;
 
 public class SyncFunction {
-    public final DsdSyncFunction dsdFunction;
-    public final SymbolName symbolName;
-    public final Address start;
-    public final Address end;
-    private final DsSection dsSection;
-    private final Program program;
+    public final @NotNull DsdSyncFunction dsdFunction;
+    public final @NotNull SymbolName symbolName;
+    public final @NotNull Address start;
+    public final @NotNull Address end;
+    private final @NotNull DsSection dsSection;
+    private final @NotNull Program program;
+    private final @NotNull AddressSet codeBody;
 
-    public SyncFunction(Program program, DsSection dsSection, DsdSyncFunction dsdFunction)
-    throws InvalidInputException, DuplicateNameException {
-        Address start = dsSection.getAddress(dsdFunction.start);
-        Address end = dsSection.getAddress(dsdFunction.end - 1);
-
-        Objects.requireNonNull(start);
-        Objects.requireNonNull(end);
+    public SyncFunction(
+        @NotNull Program program,
+        @NotNull DsSection dsSection,
+        @NotNull DsdSyncFunction dsdFunction
+    ) throws InvalidInputException, DuplicateNameException, DsSection.Exception {
+        Address start = dsSection.getRequiredAddress(dsdFunction.start);
+        Address end = dsSection.getRequiredAddress(dsdFunction.end - 1);
 
         SymbolName symbolName = new SymbolName(program, dsdFunction.name.getString(), SymbolName.Type.FUNCTION);
+
+        AddressSet codeBody = createCodeBody(start, end, dsdFunction, dsSection);
 
         this.dsdFunction = dsdFunction;
         this.symbolName = symbolName;
@@ -49,46 +53,52 @@ public class SyncFunction {
         this.end = end;
         this.dsSection = dsSection;
         this.program = program;
+        this.codeBody = codeBody;
     }
 
-    public AddressSet getCodeAddressSet() {
+    private AddressSet createCodeBody(
+        @NotNull Address start,
+        @NotNull Address end,
+        @NotNull DsdSyncFunction dsdFunction,
+        @NotNull DsSection dsSection
+    ) throws DsSection.Exception {
         AddressSet codeSet = new AddressSet(start, end);
         for (DsdSyncDataRange dataRange : dsdFunction.getDataRanges()) {
-            Address rangeStart = dsSection.getAddress(dataRange.start);
-            Address rangeEnd = dsSection.getAddress(dataRange.end - 1);
+            Address rangeStart = dsSection.getRequiredAddress(dataRange.start);
+            Address rangeEnd = dsSection.getRequiredAddress(dataRange.end - 1);
             codeSet.deleteRange(rangeStart, rangeEnd);
         }
         return codeSet;
     }
 
-    public Function getExistingGhidraFunction() {
+    public @Nullable Function getExistingGhidraFunction() {
         FunctionManager functionManager = program.getFunctionManager();
         return functionManager.getFunctionAt(start);
     }
 
-    public void createGhidraFunction(TaskMonitor monitor)
+    public @NotNull Function createGhidraFunction(@NotNull TaskMonitor monitor)
     throws InvalidInputException, DuplicateNameException, CircularDependencyException, OverlappingFunctionException {
         Listing listing = program.getListing();
         listing.clearCodeUnits(start, start.next(), true);
 
-        AddressSet body = this.getCodeAddressSet();
-        CreateFunctionCmd createFunctionCmd = new CreateFunctionCmd(symbolName.name, start, body,
+        CreateFunctionCmd createFunctionCmd = new CreateFunctionCmd(symbolName.name, start, codeBody,
             SourceType.USER_DEFINED,
             false, true
         );
         createFunctionCmd.applyTo(program, monitor);
         Function function = listing.getFunctionAt(start);
         this.updateGhidraFunction(function);
+        return function;
     }
 
-    public void updateGhidraFunction(Function function)
+    public void updateGhidraFunction(@NotNull Function function)
     throws InvalidInputException, DuplicateNameException, CircularDependencyException, OverlappingFunctionException {
         function.setName(symbolName.name, SourceType.USER_DEFINED);
         function.setParentNamespace(symbolName.namespace);
-        function.setBody(this.getCodeAddressSet());
+        function.setBody(codeBody);
     }
 
-    public boolean ghidraFunctionNeedsUpdate(Function function) {
+    public boolean ghidraFunctionNeedsUpdate(@NotNull Function function) {
         String ghidraFunctionName = function.getName();
         boolean sameName = ghidraFunctionName.equals(symbolName.name);
         boolean defaultNameBefore = ghidraFunctionName.startsWith("FUN_");
@@ -101,11 +111,10 @@ public class SyncFunction {
             return true;
         }
 
-        AddressSet body = this.getCodeAddressSet();
-        return !function.getBody().equals(body);
+        return !function.getBody().equals(codeBody);
     }
 
-    public void definePoolConstants(FlatProgramAPI api)
+    public void definePoolConstants(@NotNull FlatProgramAPI api)
     throws CodeUnitInsertionException, CancelledException {
         DataType undefined4Type = DataTypeUtil.getUndefined4();
 
@@ -118,7 +127,7 @@ public class SyncFunction {
         }
     }
 
-    public void disassemble(Register thumbRegister, TaskMonitor monitor) {
+    public void disassemble(@NotNull Register thumbRegister, @NotNull TaskMonitor monitor) {
         BigInteger thumbModeValue = BigInteger.valueOf(dsdFunction.thumb ? 1L : 0L);
         DisassembleCommand disassembleCommand = new DisassembleCommand(start, null, true);
         disassembleCommand.enableCodeAnalysis(false);
@@ -126,7 +135,7 @@ public class SyncFunction {
         disassembleCommand.applyTo(program, monitor);
     }
 
-    public void referPoolConstants(FlatProgramAPI api) {
+    public void referPoolConstants(@NotNull FlatProgramAPI api) {
         Listing listing = api.getCurrentProgram().getListing();
         int[] poolConstants = dsdFunction.pool_constants.getArray();
 

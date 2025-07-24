@@ -8,6 +8,7 @@ import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.program.model.listing.BookmarkManager;
 import ghidra.program.model.listing.BookmarkType;
 import ghidra.program.model.listing.Program;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -25,8 +26,8 @@ public class DsdGhidraPlugin extends ProgramPlugin {
     public static final String SECTION_BOOKMARK = "DSD_SECTION";
     public static final String DELINK_FILE_BOOKMARK = "DSD_DELINK_FILE";
 
-    private final Icon sectionIcon;
-    private final Icon delinkFileIcon;
+    private final @NotNull Icon sectionIcon;
+    private final @NotNull Icon delinkFileIcon;
 
     private static BookmarkType BOOKMARK_TYPE_SECTION;
     private static BookmarkType BOOKMARK_TYPE_DELINK_FILE;

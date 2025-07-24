@@ -5,6 +5,7 @@ import com.sun.jna.Structure;
 import dsdghidra.types.UnsafeList;
 import dsdghidra.types.UnsafeString;
 import dsdghidra.types.UnsafeU32List;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -19,17 +20,17 @@ public class DsdSyncFunction extends Structure {
     public DsdSyncFunction() {
     }
 
-    public DsdSyncFunction(Pointer p) {
+    public DsdSyncFunction(@NotNull Pointer p) {
         super(p);
         this.read();
     }
 
     @Override
-    protected List<String> getFieldOrder() {
+    protected @NotNull List<String> getFieldOrder() {
         return List.of("name", "thumb", "start", "end", "data_ranges", "pool_constants");
     }
 
-    public DsdSyncDataRange[] getDataRanges() {
+    public @NotNull DsdSyncDataRange[] getDataRanges() {
         return data_ranges.getArray(new DsdSyncDataRange[0], DsdSyncDataRange::new);
     }
 }

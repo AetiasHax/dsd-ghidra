@@ -4,6 +4,7 @@ import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import dsdghidra.dsd.SectionKind;
 import dsdghidra.types.UnsafeString;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -17,17 +18,17 @@ public class DsdSyncBaseSection extends Structure {
         super();
     }
 
-    public DsdSyncBaseSection(Pointer p) {
+    public DsdSyncBaseSection(@NotNull Pointer p) {
         super(p);
         this.read();
     }
 
     @Override
-    protected List<String> getFieldOrder() {
+    protected @NotNull List<String> getFieldOrder() {
         return List.of("name", "start_address", "end_address", "kind");
     }
 
-    public SectionKind getKind() {
+    public @NotNull SectionKind getKind() {
         return SectionKind.VALUES[kind];
     }
 

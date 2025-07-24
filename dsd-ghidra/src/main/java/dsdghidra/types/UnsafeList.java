@@ -2,6 +2,7 @@ package dsdghidra.types;
 
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.List;
@@ -12,11 +13,11 @@ public class UnsafeList<T extends Structure> extends Structure {
     public int len;
 
     @Override
-    protected List<String> getFieldOrder() {
+    protected @NotNull List<String> getFieldOrder() {
         return List.of("ptr", "len");
     }
 
-    public T[] getArray(T[] emptyArray, Function<Pointer, T> factory) {
+    public @NotNull T[] getArray(@NotNull T[] emptyArray, @NotNull Function<Pointer, T> factory) {
         if (ptr == null) {
             return emptyArray;
         }

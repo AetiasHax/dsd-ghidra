@@ -2,6 +2,7 @@ package dsdghidra.sync;
 
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -13,17 +14,17 @@ public class DsdSyncAutoload extends Structure {
     public DsdSyncAutoload() {
     }
 
-    public DsdSyncAutoload(Pointer p) {
+    public DsdSyncAutoload(@NotNull Pointer p) {
         super(p);
         this.read();
     }
 
     @Override
-    protected List<String> getFieldOrder() {
+    protected @NotNull List<String> getFieldOrder() {
         return List.of("kind", "index", "module");
     }
 
-    public DsdSyncAutoloadKind getKind() {
+    public @NotNull DsdSyncAutoloadKind getKind() {
         return DsdSyncAutoloadKind.VALUES[kind];
     }
 }

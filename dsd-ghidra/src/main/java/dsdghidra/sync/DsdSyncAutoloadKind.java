@@ -1,9 +1,11 @@
 package dsdghidra.sync;
 
+import org.jetbrains.annotations.NotNull;
+
 public enum DsdSyncAutoloadKind {
     Itcm,
     Dtcm,
     Unknown;
 
-    public static final DsdSyncAutoloadKind[] VALUES = DsdSyncAutoloadKind.values();
+    public static final @NotNull DsdSyncAutoloadKind[] VALUES = DsdSyncAutoloadKind.values();
 }

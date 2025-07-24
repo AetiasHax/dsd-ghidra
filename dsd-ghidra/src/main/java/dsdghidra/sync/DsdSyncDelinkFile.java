@@ -4,6 +4,7 @@ import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import dsdghidra.types.UnsafeList;
 import dsdghidra.types.UnsafeString;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -14,17 +15,17 @@ public class DsdSyncDelinkFile extends Structure {
     public DsdSyncDelinkFile() {
     }
 
-    public DsdSyncDelinkFile(Pointer p) {
+    public DsdSyncDelinkFile(@NotNull Pointer p) {
         super(p);
         this.read();
     }
 
     @Override
-    protected List<String> getFieldOrder() {
+    protected @NotNull List<String> getFieldOrder() {
         return List.of("name", "sections");
     }
 
-    public DsdSyncBaseSection[] getSections() {
+    public @NotNull DsdSyncBaseSection[] getSections() {
         return sections.getArray(new DsdSyncBaseSection[0], DsdSyncBaseSection::new);
     }
 }
