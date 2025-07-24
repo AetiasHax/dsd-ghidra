@@ -287,22 +287,20 @@ public class SyncDsd extends GhidraScript {
                     return;
                 }
             }
-        } else {
-            if (syncFunction.ghidraFunctionNeedsUpdate(ghidraFunction)) {
-                println("Updating function " + syncFunction.symbolName.symbol + " at " + syncFunction.start);
-                if (!dryRun) {
-                    try {
-                        syncFunction.updateGhidraFunction(ghidraFunction);
-                    } catch (Exception e) {
-                        printerr(String.format(
-                            "Failed to update Ghidra function '%s' at %s in %s, see error:\n%s",
-                            ghidraFunction.getName(),
-                            syncFunction.start,
-                            dsSection.getModule().name,
-                            e
-                        ));
-                        return;
-                    }
+        } else if (syncFunction.ghidraFunctionNeedsUpdate(ghidraFunction)) {
+            println("Updating function " + syncFunction.symbolName.symbol + " at " + syncFunction.start);
+            if (!dryRun) {
+                try {
+                    syncFunction.updateGhidraFunction(ghidraFunction);
+                } catch (Exception e) {
+                    printerr(String.format(
+                        "Failed to update Ghidra function '%s' at %s in %s, see error:\n%s",
+                        ghidraFunction.getName(),
+                        syncFunction.start,
+                        dsSection.getModule().name,
+                        e
+                    ));
+                    return;
                 }
             }
         }

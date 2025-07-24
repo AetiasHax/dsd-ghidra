@@ -8,6 +8,7 @@ import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.MutabilitySettingsDefinition;
 import ghidra.program.model.lang.OperandType;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.lang.RegisterValue;
@@ -114,16 +115,19 @@ public class SyncFunction {
         return !function.getBody().equals(codeBody);
     }
 
-    public void definePoolConstants(@NotNull FlatProgramAPI api)
-    throws CodeUnitInsertionException, CancelledException {
+    public void definePoolConstants(
+        @NotNull FlatProgramAPI api
+    ) throws CodeUnitInsertionException, CancelledException, DataTypeUtil.Exception {
         DataType undefined4Type = DataTypeUtil.getUndefined4();
 
         for (int poolConstant : dsdFunction.pool_constants.getArray()) {
             Address poolAddress = dsSection.getAddress(poolConstant);
             api.clearListing(poolAddress);
-            if (api.getDataAt(poolAddress) == null) {
-                api.createData(poolAddress, undefined4Type);
+            Data data = api.getDataAt(poolAddress);
+            if (data == null) {
+                data = api.createData(poolAddress, undefined4Type);
             }
+            DataTypeUtil.setDataMutability(data, MutabilitySettingsDefinition.CONSTANT);
         }
     }
 
