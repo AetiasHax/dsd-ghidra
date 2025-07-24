@@ -38,7 +38,6 @@ public class SyncDsd extends GhidraScript {
 
     private Properties properties;
 
-    private Listing listing;
     private Register thumbRegister;
     private DsModules dsModules;
 
@@ -50,12 +49,10 @@ public class SyncDsd extends GhidraScript {
     @Override
     protected void run()
     throws Exception {
-        this.listing = currentProgram.getListing();
         Memory memory = currentProgram.getMemory();
         ProgramContext programContext = currentProgram.getProgramContext();
         this.thumbRegister = programContext.getRegister("TMode");
         this.dsModules = new DsModules(memory);
-        //        this.println(this.dsModules.toString(0));
 
         loadProperties();
 

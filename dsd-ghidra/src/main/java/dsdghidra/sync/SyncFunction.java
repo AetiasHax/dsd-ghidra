@@ -66,7 +66,7 @@ public class SyncFunction {
         return functionManager.getFunctionAt(start);
     }
 
-    public Function createGhidraFunction(TaskMonitor monitor)
+    public void createGhidraFunction(TaskMonitor monitor)
     throws InvalidInputException, DuplicateNameException, CircularDependencyException, OverlappingFunctionException {
         Listing listing = program.getListing();
         listing.clearCodeUnits(start, start.next(), true);
@@ -79,7 +79,6 @@ public class SyncFunction {
         createFunctionCmd.applyTo(program, monitor);
         Function function = listing.getFunctionAt(start);
         this.updateGhidraFunction(function);
-        return function;
     }
 
     public void updateGhidraFunction(Function function)
@@ -103,11 +102,7 @@ public class SyncFunction {
         }
 
         AddressSet body = this.getCodeAddressSet();
-        if (!function.getBody().equals(body)) {
-            return true;
-        }
-
-        return false;
+        return !function.getBody().equals(body);
     }
 
     public void definePoolConstants(FlatProgramAPI api)

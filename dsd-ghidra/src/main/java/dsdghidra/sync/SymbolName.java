@@ -32,7 +32,7 @@ public class SymbolName {
         this.name = name;
     }
 
-    public static enum Type {
+    public enum Type {
         FUNCTION,
         OTHER,
     }

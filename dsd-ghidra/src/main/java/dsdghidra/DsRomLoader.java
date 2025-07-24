@@ -129,7 +129,7 @@ public class DsRomLoader extends AbstractProgramWrapperLoader {
 
         try {
             for (DsIoRegister register : DsIoRegister.ARM9_REGS) {
-                api.createLabel(api.toAddr(register.address), register.name, true);
+                api.createLabel(api.toAddr(register.address()), register.name(), true);
             }
         } catch (Exception e) {
             throw new CreateLabelFailedException(e);
@@ -152,7 +152,7 @@ public class DsRomLoader extends AbstractProgramWrapperLoader {
 
         try {
             for (DsIoRegister register : DsIoRegister.ARM7_REGS) {
-                api.createLabel(api.toAddr(register.address), register.name, true);
+                api.createLabel(api.toAddr(register.address()), register.name(), true);
             }
         } catch (Exception e) {
             throw new CreateLabelFailedException(e);

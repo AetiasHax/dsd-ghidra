@@ -1,6 +1,6 @@
 package dsdghidra.loader;
 
-public class DsIoRegister {
+public record DsIoRegister(int address, String name) {
     public static final DsIoRegister[] ARM9_REGS = {
         new DsIoRegister(0x04000000, "REG_DISPCNT"),
         new DsIoRegister(0x04000004, "REG_DISPSTAT"),
@@ -347,12 +347,4 @@ public class DsIoRegister {
     public static final DsIoRegister[] BIOS_REGS = {
         new DsIoRegister(0x027ffc40, "BIOS_BOOT_INDICATOR"),
     };
-
-    public final int address;
-    public final String name;
-
-    public DsIoRegister(int address, String name) {
-        this.address = address;
-        this.name = name;
-    }
 }

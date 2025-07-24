@@ -55,11 +55,13 @@ repositories {
 	// dropped into the lib/ directory.
 	// See https://docs.gradle.org/current/userguide/declaring_repositories.html for more info.
 	// Ex: mavenCentral()
+	mavenCentral()
 }
 
 dependencies {
 	// Any external dependencies added here will automatically be copied to the lib/ directory when
-	// this extension is built.	
+	// this extension is built.
+	implementation 'org.jetbrains:annotations:24.0.0'
 }
 
 // Exclude additional files from the built extension

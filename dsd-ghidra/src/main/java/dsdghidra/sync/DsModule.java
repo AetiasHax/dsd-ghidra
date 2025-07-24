@@ -6,6 +6,7 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlockException;
 import ghidra.util.exception.NotFoundException;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -128,8 +129,8 @@ public class DsModule {
 
         sectionMap.clear();
 
-        codeSections.sort(Comparator.comparingInt(a -> a.getMinAddress()));
-        bssSections.sort(Comparator.comparingInt(a -> a.getMinAddress()));
+        codeSections.sort(Comparator.comparingInt(DsSection::getMinAddress));
+        bssSections.sort(Comparator.comparingInt(DsSection::getMinAddress));
 
         joinSection(program, codeSections, COMBINED_CODE_KEY);
         joinSection(program, bssSections, COMBINED_BSS_KEY);
@@ -170,6 +171,7 @@ public class DsModule {
             String.join(",\n", sections) + "\n" + pad2 + "}\n" + pad + "}";
     }
 
+    @Nullable
     public DsSection getSectionContaining(int address) {
         for (DsSection section : sectionMap.values()) {
             if (section.contains(address)) {

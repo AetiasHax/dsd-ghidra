@@ -4,7 +4,7 @@ import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 
 public class DsdError {
-    public Memory memory;
+    public final Memory memory;
 
     public DsdError() {
         this.memory = new Memory(8);

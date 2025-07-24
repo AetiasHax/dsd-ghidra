@@ -124,15 +124,9 @@ public class SyncRelocation {
                     this.addReference(api, dsModules.getOverlay(id), primary);
                 }
             }
-            case Main -> {
-                this.addReference(api, dsModules.main, true);
-            }
-            case Itcm -> {
-                this.addReference(api, dsModules.itcm, true);
-            }
-            case Dtcm -> {
-                this.addReference(api, dsModules.dtcm, true);
-            }
+            case Main -> this.addReference(api, dsModules.main, true);
+            case Itcm -> this.addReference(api, dsModules.itcm, true);
+            case Dtcm -> this.addReference(api, dsModules.dtcm, true);
             case Autoload -> {
                 int autoloadIndex = dsdRelocation.indices.getArray()[0];
                 this.addReference(api, dsModules.getAutoload(autoloadIndex), true);

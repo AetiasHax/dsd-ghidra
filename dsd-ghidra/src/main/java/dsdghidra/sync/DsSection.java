@@ -15,7 +15,7 @@ public class DsSection {
     private final DsModule module;
     private MemoryBlock memoryBlock;
     public final AddressSpace addressSpace;
-    private int minAddress;
+    private final int minAddress;
     private int maxAddress;
 
     public DsSection(String name, DsModule module, MemoryBlock memoryBlock) {

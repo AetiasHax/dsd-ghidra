@@ -2,7 +2,6 @@ package dialog;
 
 import docking.widgets.filechooser.GhidraFileChooser;
 import docking.widgets.filechooser.GhidraFileChooserMode;
-import ghidra.app.script.GhidraScriptProperties;
 
 import java.awt.*;
 import java.io.File;

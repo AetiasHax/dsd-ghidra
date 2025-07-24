@@ -5,6 +5,7 @@ import dsdghidra.DsdGhidraPlugin;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.listing.*;
+import org.jetbrains.annotations.NotNull;
 
 public class SyncSection {
     private static final int SECTION_COMMENT_TYPE = CodeUnit.PLATE_COMMENT;
@@ -63,13 +64,7 @@ public class SyncSection {
         }
         Address start = dsSection.getAddress(dsdSection.base.start_address);
         if (start == null) {
-            String error = "Section's address range does not match parent module '" + dsModule.name + "'\n";
-            error += "Section: " + fileName + dsdSection.base.name.getString();
-            error += "[" + Integer.toHexString(dsdSection.base.start_address);
-            error += ".." + Integer.toHexString(dsdSection.base.end_address) + "]\n";
-            error += "Parent: " + dsModule.name + dsSection.getName();
-            error += "[" + Integer.toHexString(dsSection.getMinAddress());
-            error += ".." + Integer.toHexString(dsSection.getMaxAddress()) + "]\n";
+            String error = getAddressRangeNotMatchingError(fileName, dsSection);
             throw new Exception(error);
         }
 
@@ -81,6 +76,17 @@ public class SyncSection {
         if (!dryRun) {
             listing.setComment(start, SECTION_COMMENT_TYPE, comment);
         }
+    }
+
+    private @NotNull String getAddressRangeNotMatchingError(String fileName, DsSection dsSection) {
+        String error = "Section's address range does not match parent module '" + dsModule.name + "'\n";
+        error += "Section: " + fileName + dsdSection.base.name.getString();
+        error += "[" + Integer.toHexString(dsdSection.base.start_address);
+        error += ".." + Integer.toHexString(dsdSection.base.end_address) + "]\n";
+        error += "Parent: " + dsModule.name + dsSection.getName();
+        error += "[" + Integer.toHexString(dsSection.getMinAddress());
+        error += ".." + Integer.toHexString(dsSection.getMaxAddress()) + "]\n";
+        return error;
     }
 
     public Address getBookmarkAddress() {
