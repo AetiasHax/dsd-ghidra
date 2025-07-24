@@ -12,12 +12,16 @@ public class SymbolName {
     public final Namespace namespace;
     public final String name;
 
-    public SymbolName(Program program, String symbol) throws InvalidInputException, DuplicateNameException {
-        int parenIndex = symbol.indexOf('(');
+    public SymbolName(Program program, String symbol, Type type)
+            throws InvalidInputException, DuplicateNameException {
         String withoutParams = symbol;
-        if (parenIndex >= 0) {
-            withoutParams = symbol.substring(0, parenIndex);
+        if (type == Type.FUNCTION) {
+            int parenIndex = symbol.indexOf('(');
+            if (parenIndex >= 0) {
+                withoutParams = symbol.substring(0, parenIndex);
+            }
         }
+
         String[] namespaces = withoutParams.split("::");
         String name = namespaces[namespaces.length - 1].replace(' ', '_');
 
@@ -28,9 +32,13 @@ public class SymbolName {
         this.name = name;
     }
 
+    public static enum Type {
+        FUNCTION,
+        OTHER,
+    }
 
     private Namespace getOrCreateNamespace(Program program, String[] namespaces)
-    throws InvalidInputException, DuplicateNameException {
+            throws InvalidInputException, DuplicateNameException {
         SymbolTable symbolTable = program.getSymbolTable();
 
         Namespace parent = program.getGlobalNamespace();

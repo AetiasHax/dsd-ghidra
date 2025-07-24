@@ -41,7 +41,7 @@ public class SyncFunction {
         Objects.requireNonNull(start);
         Objects.requireNonNull(end);
 
-        SymbolName symbolName = new SymbolName(program, dsdFunction.name.getString());
+        SymbolName symbolName = new SymbolName(program, dsdFunction.name.getString(), SymbolName.Type.FUNCTION);
 
         this.dsdFunction = dsdFunction;
         this.symbolName = symbolName;

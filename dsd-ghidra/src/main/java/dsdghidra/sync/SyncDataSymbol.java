@@ -22,7 +22,7 @@ public class SyncDataSymbol {
 
     public SyncDataSymbol(Program program, DsSection dsSection, DsdSyncDataSymbol dsdDataSymbol)
     throws InvalidInputException, DuplicateNameException {
-        SymbolName symbolName = new SymbolName(program, dsdDataSymbol.name.getString());
+        SymbolName symbolName = new SymbolName(program, dsdDataSymbol.name.getString(), SymbolName.Type.OTHER);
         Address address = dsSection.getAddress(dsdDataSymbol.address);
 
         this.dsdDataSymbol = dsdDataSymbol;
