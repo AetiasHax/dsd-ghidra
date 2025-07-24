@@ -51,7 +51,7 @@ impl SafeDsRomLoaderData {
                     AutoloadKind::Itcm => "itcm".into(),
                     AutoloadKind::Dtcm => "dtcm".into(),
                     AutoloadKind::Unknown(index) => {
-                        format!("autoload_{}", index)
+                        format!("autoload_{index}")
                     }
                 },
             })
