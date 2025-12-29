@@ -10,11 +10,6 @@ import dsdghidra.DsdGhidra;
 import dsdghidra.DsdGhidraPlugin;
 import dsdghidra.sync.*;
 import dsdghidra.util.DsdError;
-import ghidra.app.script.GhidraScript;
-import ghidra.app.script.GhidraState;
-import ghidra.framework.model.Project;
-import ghidra.framework.model.ProjectData;
-import ghidra.framework.model.ProjectLocator;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.Memory;
@@ -22,12 +17,10 @@ import ghidra.util.exception.CancelledException;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Properties;
 
 @SuppressWarnings("unused")
-public class SyncDsd extends GhidraScript {
+public class SyncDsd extends DsdGhidraScript {
     private boolean dryRun = false;
 
     private Properties properties;
@@ -48,7 +41,7 @@ public class SyncDsd extends GhidraScript {
         this.thumbRegister = programContext.getRegister("TMode");
         this.dsModules = new DsModules(memory);
 
-        loadProperties();
+        this.loadProperties();
 
         DsdConfigChooser dsdConfigChooser = new DsdConfigChooser(null, "Begin sync", this.properties);
         File file = dsdConfigChooser.getSelectedFile();
@@ -78,35 +71,6 @@ public class SyncDsd extends GhidraScript {
             }
             DsdGhidra.INSTANCE.free_error(dsdError.memory);
         }
-    }
-
-    private File getProjectLocation() {
-        GhidraState state = this.getState();
-        Project project = state.getProject();
-        ProjectData projectData = project.getProjectData();
-        ProjectLocator projectLocator = projectData.getProjectLocator();
-        return projectLocator.getProjectDir();
-    }
-
-    private File getPropertiesFile() {
-        File projectLocation = getProjectLocation();
-        Path propertiesPath = Paths.get(projectLocation.getAbsolutePath(), "SyncDsd.properties");
-        return propertiesPath.toFile();
-    }
-
-    private void loadProperties() {
-        File propertiesFile = getPropertiesFile();
-        this.properties = new Properties();
-        try {
-            this.properties.load(new FileInputStream(propertiesFile));
-        } catch (IOException ignored) {
-        }
-    }
-
-    private void saveProperties()
-    throws IOException {
-        File propertiesFile = getPropertiesFile();
-        this.properties.store(new FileOutputStream(propertiesFile), "Properties for the SyncDsd.java script");
     }
 
     private void doSync(DsdSyncData dsdSyncData) {
