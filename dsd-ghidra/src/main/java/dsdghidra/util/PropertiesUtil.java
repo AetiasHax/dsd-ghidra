@@ -48,4 +48,23 @@ public final class PropertiesUtil {
         var pathStrings = getStrings(properties, key);
         return pathStrings.stream().map(File::new).toList();
     }
+
+    public static void setBoolean(Properties properties, String key, boolean value) {
+        if (value) {
+            properties.setProperty(key, "true");
+        } else {
+            properties.setProperty(key, "false");
+        }
+    }
+
+    public static boolean getBoolean(Properties properties, String key, boolean defaultValue) {
+        String property = properties.getProperty(key);
+        if (property == null) {
+            return defaultValue;
+        }
+        return switch (property) {
+            case "true", "1" -> true;
+            default -> false;
+        };
+    }
 }

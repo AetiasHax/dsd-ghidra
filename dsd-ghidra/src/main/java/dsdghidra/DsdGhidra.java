@@ -5,6 +5,8 @@ import com.sun.jna.Library;
 import com.sun.jna.Pointer;
 import dsdghidra.loader.DsRomLoaderData;
 import dsdghidra.sync.DsdSyncData;
+import dsdghidra.types.UnsafeString;
+import dsdghidra.typesync.TypeSyncOptions;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,6 +23,10 @@ public interface DsdGhidra extends Library {
     boolean get_dsd_sync_data(String config_path, @NotNull DsdSyncData data, @Nullable Pointer error);
 
     boolean free_dsd_sync_data(@NotNull DsdSyncData data, @Nullable Pointer error);
+
+    boolean get_type_sync_data(@NotNull TypeSyncOptions options, @NotNull UnsafeString data, @Nullable Pointer error);
+
+    boolean free_type_sync_data(@NotNull UnsafeString data, @Nullable Pointer error);
 
     void free_error(@Nullable Pointer error);
 }

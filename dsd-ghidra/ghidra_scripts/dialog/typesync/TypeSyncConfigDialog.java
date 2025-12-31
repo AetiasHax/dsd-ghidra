@@ -2,8 +2,8 @@ package dialog.typesync;
 
 import docking.DialogComponentProvider;
 import docking.DockingWindowManager;
-import org.jetbrains.annotations.Nullable;
 import dsdghidra.util.PropertiesUtil;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
@@ -16,6 +16,8 @@ import java.util.Properties;
 public class TypeSyncConfigDialog extends DialogComponentProvider {
     private static final String INCLUDES_KEY = "includes";
     private static final String EXCLUDES_KEY = "excludes";
+    private static final String SHORT_ENUMS_KEY = "shortEnums";
+    private static final String SIGNED_CHAR_KEY = "signedChar";
 
     private static final int PAD = 5;
     private static final Insets INSETS = new Insets(PAD, PAD, PAD, PAD);
@@ -28,6 +30,9 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
     private final DefaultListModel<File> includesListModel = new DefaultListModel<>();
     private final DefaultListModel<File> excludesListModel = new DefaultListModel<>();
 
+    private final JCheckBox shortEnumsCheckbox;
+    private final JCheckBox signedCharCheckbox;
+
     public TypeSyncConfigDialog(Properties properties) {
         super("Type sync", true, false, true, false);
 
@@ -36,12 +41,23 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
         includesListModel.addAll(PropertiesUtil.getFiles(properties, INCLUDES_KEY));
         excludesListModel.addAll(PropertiesUtil.getFiles(properties, EXCLUDES_KEY));
 
+        this.shortEnumsCheckbox = new JCheckBox(
+            "Short enums",
+            PropertiesUtil.getBoolean(this.properties, SHORT_ENUMS_KEY, false)
+        );
+        this.signedCharCheckbox = new JCheckBox(
+            "Signed char",
+            PropertiesUtil.getBoolean(this.properties, SIGNED_CHAR_KEY, true)
+        );
+
         this.addWorkPanel(buildWorkPanel());
         this.addCancelButton();
         this.addOKButton();
     }
 
-    public record Result(List<File> includes, List<File> excludes) {}
+    public record Result(
+        List<File> includes, List<File> excludes, boolean shortEnums, boolean signedChar
+    ) {}
 
     @Nullable
     private Result result;
@@ -54,13 +70,17 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
 
     @Override
     protected void okCallback() {
-        var includes = Collections.list(includesListModel.elements());
-        var excludes = Collections.list(excludesListModel.elements());
+        var includes = Collections.list(this.includesListModel.elements());
+        var excludes = Collections.list(this.excludesListModel.elements());
+        boolean shortEnums = this.shortEnumsCheckbox.isSelected();
+        boolean signedChar = this.signedCharCheckbox.isSelected();
 
         PropertiesUtil.setList(this.properties, INCLUDES_KEY, includes);
         PropertiesUtil.setList(this.properties, EXCLUDES_KEY, excludes);
+        PropertiesUtil.setBoolean(this.properties, SHORT_ENUMS_KEY, shortEnums);
+        PropertiesUtil.setBoolean(this.properties, SIGNED_CHAR_KEY, signedChar);
 
-        this.result = new Result(includes, excludes);
+        this.result = new Result(includes, excludes, shortEnums, signedChar);
         this.close();
     }
 
@@ -76,6 +96,31 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
 
         gbc.fill = GridBagConstraints.BOTH;
         panel.add(buildIncludesExcludesPanel(), gbc);
+        gbc.gridy++;
+
+        panel.add(buildOptionsPanel(), gbc);
+        gbc.gridy++;
+
+        return panel;
+    }
+
+    private JComponent buildOptionsPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+
+        gbc.weightx = 1.0;
+        gbc.insets = NO_INSETS;
+        panel.add(this.shortEnumsCheckbox, gbc);
+        gbc.gridy++;
+
+        gbc.weighty = 1.0;
+
+        gbc.insets = NO_INSETS;
+        panel.add(this.signedCharCheckbox, gbc);
         gbc.gridy++;
 
         return panel;

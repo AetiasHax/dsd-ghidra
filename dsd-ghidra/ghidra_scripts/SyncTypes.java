@@ -6,11 +6,20 @@
 //@toolbar typesync.png
 
 import dialog.typesync.TypeSyncConfigDialog;
+import dsdghidra.DsdGhidra;
+import dsdghidra.types.UnsafeList;
+import dsdghidra.types.UnsafeString;
+import dsdghidra.typesync.TypeSyncOptions;
+import dsdghidra.util.DsdError;
 import ghidra.program.model.data.*;
 import ghidra.program.model.data.Enum;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
@@ -35,11 +44,44 @@ public class SyncTypes extends DsdGhidraScript {
 
         this.saveProperties();
 
-        this.println(configResult.includes().toString());
-        this.println(configResult.excludes().toString());
+        TypeSyncOptions options = new TypeSyncOptions();
+        UnsafeString[] includeStrings = (UnsafeString[]) configResult
+            .includes()
+            .stream()
+            .map(file -> new UnsafeString(file.toString()))
+            .toArray(UnsafeString[]::new);
+        options.includes = new UnsafeList<>(includeStrings);
+        UnsafeString[] excludeStrings = (UnsafeString[]) configResult
+            .excludes()
+            .stream()
+            .map(file -> new UnsafeString(file.toString()))
+            .toArray(UnsafeString[]::new);
+        options.excludes = new UnsafeList<>(excludeStrings);
+        options.short_enums = configResult.shortEnums();
+        options.signed_char = configResult.signedChar();
+        UnsafeString data = new UnsafeString();
+        DsdError dsdError = new DsdError();
+        if (!DsdGhidra.INSTANCE.get_type_sync_data(options, data, dsdError.memory)) {
+            String errorMessage = "Failed to get type sync data from dsd-ghidra:\n\n" + dsdError.getString() + "\n";
+            DsdGhidra.INSTANCE.free_error(dsdError.memory);
+            throw new IOException(errorMessage);
+        }
 
-//        this.printAllTypePaths();
-//        this.testTypes();
+        try {
+            this.doSync(data);
+        } finally {
+            if (!DsdGhidra.INSTANCE.free_type_sync_data(data, dsdError.memory)) {
+                this.printerr("Failed to free type sync data from dsd-ghidra:\n" + dsdError.getString());
+            }
+            DsdGhidra.INSTANCE.free_error(dsdError.memory);
+        }
+
+        //        this.printAllTypePaths();
+        //        this.testTypes();
+    }
+
+    private void doSync(UnsafeString data) {
+        this.println(data.getString());
     }
 
     private void testTypes() {
@@ -48,11 +90,17 @@ public class SyncTypes extends DsdGhidraScript {
 
         // Typedef
         var newU32Typedef = new TypedefDataType(CATEGORY_PATH, "u32", dword);
-        var u32 = (TypeDef) this.category.addDataType(newU32Typedef, DataTypeConflictHandler.KEEP_HANDLER);
+        var u32 = (TypeDef) this.category.addDataType(
+            newU32Typedef,
+            DataTypeConflictHandler.KEEP_HANDLER
+        );
 
         // Struct
         var newStruct = new StructureDataType(CATEGORY_PATH, "MyTestStruct", 0);
-        var struct = (Structure) this.category.addDataType(newStruct, DataTypeConflictHandler.KEEP_HANDLER);
+        var struct = (Structure) this.category.addDataType(
+            newStruct,
+            DataTypeConflictHandler.KEEP_HANDLER
+        );
 
         struct.deleteAll();
         struct.add(u32, "mUnk_00", "");
@@ -61,7 +109,10 @@ public class SyncTypes extends DsdGhidraScript {
 
         // Enum
         var newEnumType = new EnumDataType(CATEGORY_PATH, "MyTestEnum", 4);
-        var enumType = (Enum) this.category.addDataType(newEnumType, DataTypeConflictHandler.KEEP_HANDLER);
+        var enumType = (Enum) this.category.addDataType(
+            newEnumType,
+            DataTypeConflictHandler.KEEP_HANDLER
+        );
 
         for (var name : enumType.getNames()) {
             enumType.remove(name);
@@ -72,9 +123,15 @@ public class SyncTypes extends DsdGhidraScript {
 
         // Union
         var newUnion = new UnionDataType(CATEGORY_PATH, "MyTestUnion");
-        var union = (Union) this.category.addDataType(newUnion, DataTypeConflictHandler.KEEP_HANDLER);
+        var union = (Union) this.category.addDataType(
+            newUnion,
+            DataTypeConflictHandler.KEEP_HANDLER
+        );
 
-        var ordinals = Arrays.stream(union.getComponents()).map(DataTypeComponent::getOrdinal).collect(Collectors.toSet());
+        var ordinals = Arrays
+            .stream(union.getComponents())
+            .map(DataTypeComponent::getOrdinal)
+            .collect(Collectors.toSet());
         union.delete(ordinals);
 
         union.add(struct);

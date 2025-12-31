@@ -11,7 +11,7 @@ import java.util.Properties;
 public class IncludePathChooser extends GhidraFileChooser {
     private static final String LAST_PATH_KEY = "lastIncludePath";
 
-    private Properties properties;
+    private final Properties properties;
 
     public IncludePathChooser(Component parent, Properties properties) {
         super(parent);

@@ -17,6 +17,25 @@ public class UnsafeList<T extends Structure> extends Structure {
         return List.of("ptr", "len");
     }
 
+    public UnsafeList() {
+    }
+
+    public UnsafeList(UnsafeString[] items) {
+        if (items.length == 0) {
+            this.ptr = null;
+            this.len = 0;
+            return;
+        }
+
+        UnsafeString[] contiguousArray = (UnsafeString[]) items[0].toArray(items.length);
+        for (int i = 0; i < items.length; i++) {
+            contiguousArray[i].ptr = items[i].ptr;
+            contiguousArray[i].write();
+        }
+        this.ptr = contiguousArray[0].getPointer();
+        this.len = items.length;
+    }
+
     public @NotNull T[] getArray(@NotNull T[] emptyArray, @NotNull Function<Pointer, T> factory) {
         if (ptr == null) {
             return emptyArray;
