@@ -20,7 +20,7 @@ public record Field(
 
         JsonNode kindNode;
         try {
-            kindNode = expectObject(expectKey(root, "kind"));
+            kindNode = expectKey(root, "kind");
         } catch (Types.ParseException e) {
             throw new Types.ParseException("Failed to parse `kind` for field `" + name + "`", e);
         }

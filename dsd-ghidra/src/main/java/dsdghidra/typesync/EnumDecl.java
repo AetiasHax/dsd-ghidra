@@ -1,6 +1,7 @@
 package dsdghidra.typesync;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static dsdghidra.typesync.TypesyncUtil.*;
@@ -8,6 +9,14 @@ import static dsdghidra.typesync.TypesyncUtil.*;
 public record EnumDecl(@Nullable String name, EnumConstant[] constants, long size)
     implements TypeKind
 {
+    @Override
+    public @NotNull String getName() throws Types.NoNameException {
+        if (name == null) {
+            throw new Types.NoNameException("Enum has no name");
+        }
+        return name;
+    }
+
     /**
      * @param root Data to parse.
      * @return an {@link EnumDecl}.

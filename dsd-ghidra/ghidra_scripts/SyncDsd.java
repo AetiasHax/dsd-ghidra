@@ -11,12 +11,16 @@ import dsdghidra.DsdGhidraPlugin;
 import dsdghidra.sync.*;
 import dsdghidra.util.DsdError;
 import ghidra.program.model.lang.Register;
-import ghidra.program.model.listing.*;
+import ghidra.program.model.listing.BookmarkManager;
+import ghidra.program.model.listing.BookmarkType;
+import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.ProgramContext;
 import ghidra.program.model.mem.Memory;
 import ghidra.util.exception.CancelledException;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.Properties;
 
 @SuppressWarnings("unused")
@@ -34,8 +38,7 @@ public class SyncDsd extends DsdGhidraScript {
     }
 
     @Override
-    protected void run()
-    throws Exception {
+    protected void run() throws Exception {
         Memory memory = currentProgram.getMemory();
         ProgramContext programContext = currentProgram.getProgramContext();
         this.thumbRegister = programContext.getRegister("TMode");
@@ -43,7 +46,11 @@ public class SyncDsd extends DsdGhidraScript {
 
         this.loadProperties();
 
-        DsdConfigChooser dsdConfigChooser = new DsdConfigChooser(null, "Begin sync", this.properties);
+        DsdConfigChooser dsdConfigChooser = new DsdConfigChooser(
+            null,
+            "Begin sync",
+            this.properties
+        );
         File file = dsdConfigChooser.getSelectedFile();
         dsdConfigChooser.dispose();
         if (dsdConfigChooser.wasCancelled()) {
@@ -99,10 +106,7 @@ public class SyncDsd extends DsdGhidraScript {
         for (DsdSyncOverlay overlay : dsdSyncData.getArm9Overlays()) {
             DsModule dsModule = dsModules.getOverlay(overlay.id);
             if (dsModule == null) {
-                printerr(String.format(
-                    "No memory blocks for overlay %d",
-                    overlay.id
-                ));
+                printerr(String.format("No memory blocks for overlay %d", overlay.id));
                 return;
             }
             this.syncModule(overlay.module, dsModule);
@@ -126,11 +130,7 @@ public class SyncDsd extends DsdGhidraScript {
         try {
             this.updateModule(dsdSyncModule, dsModule);
         } catch (Exception e) {
-            printerr(String.format(
-                "Failed to update module %s, see error:\n%s",
-                dsModule.name,
-                e
-            ));
+            printerr(String.format("Failed to update module %s, see error:\n%s", dsModule.name, e));
             return;
         }
 
@@ -312,8 +312,7 @@ public class SyncDsd extends DsdGhidraScript {
                 if (!dryRun) {
                     syncDataSymbol.deleteExistingLabels();
                 }
-                println("Updating data " + currentName + " at " + syncDataSymbol.address + " to name " +
-                    syncDataSymbol.symbolName.symbol);
+                println("Updating data " + currentName + " at " + syncDataSymbol.address + " to name " + syncDataSymbol.symbolName.symbol);
             } else {
                 return;
             }

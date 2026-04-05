@@ -1,12 +1,18 @@
 package dsdghidra.typesync;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.jetbrains.annotations.NotNull;
 
 import static dsdghidra.typesync.TypesyncUtil.*;
 
 public record Typedef(String name, TypeKind underlyingType, boolean isConstant, boolean isVolatile)
     implements TypeKind
 {
+    @Override
+    public @NotNull String getName() throws Types.NoNameException {
+        return name;
+    }
+
     /**
      * @param root Data to parse.
      * @return a {@link Typedef} instance.

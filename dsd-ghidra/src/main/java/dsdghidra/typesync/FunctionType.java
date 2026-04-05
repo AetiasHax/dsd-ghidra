@@ -1,17 +1,23 @@
 package dsdghidra.typesync;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.jetbrains.annotations.NotNull;
 
 import static dsdghidra.typesync.TypesyncUtil.expectArray;
 import static dsdghidra.typesync.TypesyncUtil.expectKey;
 
-public record Function(TypeKind returnType, TypeKind[] parameters) implements TypeKind {
+public record FunctionType(TypeKind returnType, TypeKind[] parameters) implements TypeKind {
+    @Override
+    public @NotNull String getName() throws Types.NoNameException {
+        throw new Types.NoNameException("Function types cannot have names");
+    }
+
     /**
      * @param root Data to parse.
-     * @return a {@link Function}.
+     * @return a {@link FunctionType}.
      * @throws Types.ParseException if the data is invalid.
      */
-    public static Function parse(JsonNode root) throws Types.ParseException {
+    public static FunctionType parse(JsonNode root) throws Types.ParseException {
         TypeKind returnType;
         try {
             returnType = TypeKind.parse(expectKey(root, "return_type"));
@@ -39,6 +45,6 @@ public record Function(TypeKind returnType, TypeKind[] parameters) implements Ty
             }
         }
 
-        return new Function(returnType, parameters);
+        return new FunctionType(returnType, parameters);
     }
 }

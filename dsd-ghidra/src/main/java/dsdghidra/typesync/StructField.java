@@ -14,7 +14,7 @@ public record StructField(long offset, Field field) {
     public static StructField parse(JsonNode root) throws Types.ParseException {
         Field field;
         try {
-            field = Field.parse(root);
+            field = Field.parse(expectKey(root, "field"));
         } catch (Types.ParseException e) {
             throw new Types.ParseException("Failed to parse field for struct field", e);
         }

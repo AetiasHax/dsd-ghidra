@@ -4,12 +4,15 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
-public class Types {
-    private Map<String, TypeKind> types;
+public class Types implements Iterable<Map.Entry<String, TypeKind>> {
+    private final Map<String, TypeKind> types;
 
     public Types() {
         this.types = new HashMap<>();
@@ -38,15 +41,23 @@ public class Types {
 
         for (var it = typesNode.fields(); it.hasNext(); ) {
             var typeEntry = it.next();
-            String name = typeEntry.getKey();
+            String keyName = typeEntry.getKey();
             JsonNode value = typeEntry.getValue();
 
             TypeKind type;
             try {
                 type = TypeKind.parse(value);
             } catch (ParseException e) {
-                throw new ParseException("Failed to parse type `" + name + "`", e);
+                throw new ParseException("Failed to parse type `" + keyName + "`", e);
             }
+
+            String name;
+            try {
+                name = type.getName();
+            } catch (NoNameException e) {
+                throw new ParseException("Type has no name", e);
+            }
+
             if (!types.addIfAbsent(name, type)) {
                 throw new ParseException("Duplicate type name `" + name + "`");
             }
@@ -61,7 +72,20 @@ public class Types {
      * @return `true` if added, `false` if another type exists with the given name.
      */
     public boolean addIfAbsent(String name, TypeKind type) {
-        return this.types.putIfAbsent(name, type) == type;
+        if (this.types.containsKey(name)) {
+            return false;
+        }
+        this.types.put(name, type);
+        return true;
+    }
+
+    public @Nullable TypeKind get(String name) {
+        return this.types.get(name);
+    }
+
+    @Override
+    public @NotNull Iterator<Map.Entry<String, TypeKind>> iterator() {
+        return this.types.entrySet().iterator();
     }
 
     public static class ParseException extends Exception {
@@ -70,6 +94,16 @@ public class Types {
         }
 
         public ParseException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    public static class NoNameException extends Exception {
+        public NoNameException(String message) {
+            super(message);
+        }
+
+        public NoNameException(String message, Throwable cause) {
             super(message, cause);
         }
     }
