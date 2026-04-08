@@ -379,8 +379,7 @@ public class SyncDsd extends GhidraScript {
         }
     }
 
-    private void updateReferences(DsdSyncRelocation relocation, DsSection dsSection)
-        throws DsSection.Exception, DsModules.Exception {
+    private void updateReferences(DsdSyncRelocation relocation, DsSection dsSection) {
         SyncRelocation syncRelocation;
         try {
             syncRelocation = new SyncRelocation(currentProgram, dsSection, relocation);
@@ -395,8 +394,9 @@ public class SyncDsd extends GhidraScript {
             return;
         }
 
-        if (syncRelocation.needsUpdate()) {
-            println("Updating references from " + syncRelocation.from);
+        String updateReason = syncRelocation.getUpdateReason();
+        if (updateReason != null) {
+            println("Updating references from " + syncRelocation.from + " : " + updateReason);
             if (!dryRun) {
                 syncRelocation.deleteExistingReferences();
             }
