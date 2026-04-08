@@ -5,6 +5,7 @@
 //@menupath Analysis.Sync DSD
 //@toolbar typesync.png
 
+import dialog.DebugMessageDialog;
 import dialog.typesync.TypeSyncConfigDialog;
 import dsdghidra.DsdGhidra;
 import dsdghidra.types.UnsafeList;
@@ -79,11 +80,15 @@ public class SyncTypes extends DsdGhidraScript {
             DsdGhidra.INSTANCE.free_error(dsdError.memory);
             throw new IOException(errorMessage);
         }
+        String typeDataYaml = data.getString();
+        if (configResult.dumpYaml()) {
+            new DebugMessageDialog("Type YAML dump", typeDataYaml).show();
+        }
 
         this.dryRun = configResult.dryRun();
 
         try {
-            this.doSync(data.getString());
+            this.doSync(typeDataYaml);
         } finally {
             if (!DsdGhidra.INSTANCE.free_type_sync_data(data, dsdError.memory)) {
                 this.printerr("Failed to free type sync data from dsd-ghidra:\n" + dsdError.getString());
@@ -109,7 +114,7 @@ public class SyncTypes extends DsdGhidraScript {
         this.anonymousTypeCount = 0;
 
         for (var entry : types) {
-            String name = entry.getKey();
+            TypePath name = entry.getKey();
             TypeKind type = entry.getValue();
             this.updateType(type);
         }
@@ -193,10 +198,10 @@ public class SyncTypes extends DsdGhidraScript {
             name,
             0
         ));
-        String[] baseTypes = type.baseTypes();
+        TypePath[] baseTypes = type.baseTypes();
         for (int i = 0; i < baseTypes.length; i++) {
-            String baseTypeName = baseTypes[i];
-            TypeKind baseType = this.types.get(baseTypeName);
+            TypePath baseTypePath = baseTypes[i];
+            TypeKind baseType = this.types.get(baseTypePath);
             assert baseType != null;
             DataType baseDataType = this.updateType(baseType);
             String fieldName = baseTypes.length == 1 ? "base" : "base" + i;
@@ -222,9 +227,9 @@ public class SyncTypes extends DsdGhidraScript {
     }
 
     private @NotNull DataType addNamedType(NamedType type) throws Exception {
-        TypeKind namedType = this.types.get(type.typeName());
+        TypeKind namedType = this.types.get(type.typePath());
         if (namedType == null) {
-            throw new Exception("Named type not found: " + type.typeName());
+            throw new Exception("Named type not found: " + type.typePath());
         }
         return this.updateType(namedType);
     }

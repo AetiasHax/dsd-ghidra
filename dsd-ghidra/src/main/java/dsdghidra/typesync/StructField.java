@@ -1,9 +1,8 @@
 package dsdghidra.typesync;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Map;
 
-import static dsdghidra.typesync.TypesyncUtil.expectKey;
-import static dsdghidra.typesync.TypesyncUtil.expectLong;
+import static dsdghidra.typesync.TypesyncUtil.*;
 
 public record StructField(long offset, Field field) {
     /**
@@ -11,10 +10,10 @@ public record StructField(long offset, Field field) {
      * @return a {@link StructField}.
      * @throws Types.ParseException if the data is invalid.
      */
-    public static StructField parse(JsonNode root) throws Types.ParseException {
+    public static StructField parse(Map<String, Object> root) throws Types.ParseException {
         Field field;
         try {
-            field = Field.parse(expectKey(root, "field"));
+            field = Field.parse(expectMap(expectKey(root, "field")));
         } catch (Types.ParseException e) {
             throw new Types.ParseException("Failed to parse field for struct field", e);
         }

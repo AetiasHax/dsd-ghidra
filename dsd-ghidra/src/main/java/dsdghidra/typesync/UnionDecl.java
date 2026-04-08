@@ -1,20 +1,22 @@
 package dsdghidra.typesync;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+import java.util.Map;
+
 import static dsdghidra.typesync.TypesyncUtil.*;
 
-public record UnionDecl(@Nullable String name, Field[] fields, long size, long alignment)
+public record UnionDecl(@Nullable TypePath path, Field[] fields, long size, long alignment)
     implements TypeKind
 {
     @Override
     public @NotNull String getName() throws Types.NoNameException {
-        if (name == null) {
-            throw new Types.NoNameException("Union has no name");
+        if (path == null) {
+            throw new Types.NoNameException("Union has no path");
         }
-        return name;
+        return path.toString();
     }
 
     /**
@@ -22,29 +24,29 @@ public record UnionDecl(@Nullable String name, Field[] fields, long size, long a
      * @return A {@link UnionDecl}.
      * @throws Types.ParseException if the data is invalid.
      */
-    public static UnionDecl parse(JsonNode root) throws Types.ParseException {
-        String name;
+    public static UnionDecl parse(Map<String, Object> root) throws Types.ParseException {
+        TypePath path;
         try {
-            JsonNode nameNode = expectKey(root, "name");
-            name = nameNode.isNull() ? null : expectText(nameNode);
+            Object nameNode = expectKey(root, "path");
+            path = nameNode == null ? null : TypePath.parse(expectMap(nameNode));
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to parse name for union", e);
+            throw new Types.ParseException("Failed to parse path for union", e);
         }
 
-        JsonNode fieldsNode;
+        List<Object> fieldsNode;
         try {
             fieldsNode = expectArray(expectKey(root, "fields"));
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to get fields for union `" + name + "`", e);
+            throw new Types.ParseException("Failed to get fields for union `" + path + "`", e);
         }
 
         Field[] fields = new Field[fieldsNode.size()];
         int i = 0;
-        for (JsonNode constantNode : fieldsNode) {
+        for (Object constantNode : fieldsNode) {
             try {
-                fields[i++] = Field.parse(constantNode);
+                fields[i++] = Field.parse(expectMap(constantNode));
             } catch (Types.ParseException e) {
-                throw new Types.ParseException("Failed to parse field for union `" + name + "`", e);
+                throw new Types.ParseException("Failed to parse field for union `" + path + "`", e);
             }
         }
 
@@ -52,15 +54,15 @@ public record UnionDecl(@Nullable String name, Field[] fields, long size, long a
         try {
             size = expectLong(expectKey(root, "size"));
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to parse size for union `" + name + "`", e);
+            throw new Types.ParseException("Failed to parse size for union `" + path + "`", e);
         }
         long alignment;
         try {
             alignment = expectLong(expectKey(root, "alignment"));
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to parse alignment for union `" + name + "`", e);
+            throw new Types.ParseException("Failed to parse alignment for union `" + path + "`", e);
         }
 
-        return new UnionDecl(name, fields, size, alignment);
+        return new UnionDecl(path, fields, size, alignment);
     }
 }

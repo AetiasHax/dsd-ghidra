@@ -1,7 +1,8 @@
 package dsdghidra.typesync;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Map;
 
 import static dsdghidra.typesync.TypesyncUtil.*;
 
@@ -9,16 +10,21 @@ public record Field(
     @Nullable String name, TypeKind kind, boolean isConstant, boolean isVolatile, byte bitFieldWidth
 )
 {
-    public static Field parse(JsonNode root) throws Types.ParseException {
-        JsonNode nameNode = expectKey(root, "name");
+    /**
+     * @param root Data to parse.
+     * @return a {@link Field}.
+     * @throws Types.ParseException if the data is invalid.
+     */
+    public static Field parse(Map<String, Object> root) throws Types.ParseException {
         String name;
         try {
-            name = nameNode.isNull() ? null : expectText(nameNode);
+            Object nameNode = expectKey(root, "name");
+            name = nameNode == null ? null : expectText(nameNode);
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to parse name for field", e);
+            throw new Types.ParseException("Failed to parse path for field", e);
         }
 
-        JsonNode kindNode;
+        Object kindNode;
         try {
             kindNode = expectKey(root, "kind");
         } catch (Types.ParseException e) {
@@ -54,8 +60,8 @@ public record Field(
 
         byte bitFieldWidth;
         try {
-            JsonNode bitFieldWidthNode = expectKey(root, "bit_field_width");
-            bitFieldWidth = bitFieldWidthNode.isNull() ? 0 : expectByte(bitFieldWidthNode);
+            Object bitFieldWidthNode = expectKey(root, "bit_field_width");
+            bitFieldWidth = bitFieldWidthNode == null ? 0 : expectByte(bitFieldWidthNode);
         } catch (Types.ParseException e) {
             throw new Types.ParseException(
                 "Failed to parse bit field width for field `" + name + "`",

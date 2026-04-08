@@ -1,16 +1,18 @@
 package dsdghidra.typesync;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Map;
 
 import static dsdghidra.typesync.TypesyncUtil.*;
 
-public record Typedef(String name, TypeKind underlyingType, boolean isConstant, boolean isVolatile)
-    implements TypeKind
+public record Typedef(
+    TypePath path, TypeKind underlyingType, boolean isConstant, boolean isVolatile
+) implements TypeKind
 {
     @Override
     public @NotNull String getName() throws Types.NoNameException {
-        return name;
+        return path.toString();
     }
 
     /**
@@ -18,20 +20,20 @@ public record Typedef(String name, TypeKind underlyingType, boolean isConstant, 
      * @return a {@link Typedef} instance.
      * @throws Types.ParseException if the data is invalid.
      */
-    public static Typedef parse(JsonNode root) throws Types.ParseException {
-        String name;
+    public static Typedef parse(Map<String, Object> root) throws Types.ParseException {
+        TypePath path;
         try {
-            name = expectText(expectKey(root, "name"));
+            path = TypePath.parse(expectMap(expectKey(root, "path")));
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to parse name for typedef", e);
+            throw new Types.ParseException("Failed to parse path for typedef", e);
         }
 
-        JsonNode underlyingTypeNode = expectKey(root, "underlying_type");
+        Object underlyingTypeNode = expectKey(root, "underlying_type");
         TypeKind underlyingType;
         try {
             underlyingType = TypeKind.parse(underlyingTypeNode);
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to parse underlying type of typedef `" + name + "`");
+            throw new Types.ParseException("Failed to parse underlying type of typedef `" + path + "`");
         }
 
         boolean isConstant;
@@ -39,7 +41,7 @@ public record Typedef(String name, TypeKind underlyingType, boolean isConstant, 
             isConstant = expectBool(expectKey(root, "constant"));
         } catch (Types.ParseException e) {
             throw new Types.ParseException(
-                "Failed to parse `isConstant` for typedef `" + name + "`",
+                "Failed to parse `isConstant` for typedef `" + path + "`",
                 e
             );
         }
@@ -48,11 +50,11 @@ public record Typedef(String name, TypeKind underlyingType, boolean isConstant, 
             isVolatile = expectBool(expectKey(root, "volatile"));
         } catch (Types.ParseException e) {
             throw new Types.ParseException(
-                "Failed to parse `isVolatile` for typedef `" + name + "`",
+                "Failed to parse `isVolatile` for typedef `" + path + "`",
                 e
             );
         }
 
-        return new Typedef(name, underlyingType, isConstant, isVolatile);
+        return new Typedef(path, underlyingType, isConstant, isVolatile);
     }
 }

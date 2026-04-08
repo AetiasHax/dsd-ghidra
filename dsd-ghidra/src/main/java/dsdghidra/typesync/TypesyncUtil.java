@@ -1,6 +1,8 @@
 package dsdghidra.typesync;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 final class TypesyncUtil {
     private TypesyncUtil() {
@@ -9,15 +11,14 @@ final class TypesyncUtil {
     /**
      * @param root Node to get the value from.
      * @param key  Name of key mapped to the desired value.
-     * @return a non-null {@link JsonNode}.
+     * @return an {@link Object}.
      * @throws Types.ParseException if the key did not exist in `root`.
      */
-    static JsonNode expectKey(JsonNode root, String key) throws Types.ParseException {
-        JsonNode node = root.get(key);
-        if (node == null) {
+    static Object expectKey(Map<String, Object> root, String key) throws Types.ParseException {
+        if (!root.containsKey(key)) {
             throw new Types.ParseException("Expected key `" + key + "`");
         }
-        return node;
+        return root.get(key);
     }
 
     /**
@@ -25,12 +26,11 @@ final class TypesyncUtil {
      * @return a non-empty {@link String}.
      * @throws Types.ParseException if `node` is not a string or an empty string.
      */
-    static String expectText(JsonNode node) throws Types.ParseException {
-        String text = node.asText();
-        if (text.isEmpty()) {
+    static String expectText(Object node) throws Types.ParseException {
+        if (!(node instanceof String)) {
             throw new Types.ParseException("Expected node to be a non-empty string");
         }
-        return text;
+        return (String) node;
     }
 
     /**
@@ -38,11 +38,11 @@ final class TypesyncUtil {
      * @return a `boolean`.
      * @throws Types.ParseException if `node` is not a Boolean.
      */
-    static boolean expectBool(JsonNode node) throws Types.ParseException {
-        if (!node.isBoolean()) {
+    static boolean expectBool(Object node) throws Types.ParseException {
+        if (!(node instanceof Boolean)) {
             throw new Types.ParseException("Expected node to be a Boolean");
         }
-        return node.asBoolean();
+        return (Boolean) node;
     }
 
     /**
@@ -50,11 +50,11 @@ final class TypesyncUtil {
      * @return a `long`.
      * @throws Types.ParseException if `node` is not a `long`.
      */
-    static long expectLong(JsonNode node) throws Types.ParseException {
-        if (!node.canConvertToLong()) {
+    static long expectLong(Object node) throws Types.ParseException {
+        if (!(node instanceof Number)) {
             throw new Types.ParseException("Expected node to be a long");
         }
-        return node.asLong();
+        return ((Number) node).longValue();
     }
 
     /**
@@ -62,12 +62,11 @@ final class TypesyncUtil {
      * @return a `byte`.
      * @throws Types.ParseException if `node` is not a `byte`.
      */
-    static byte expectByte(JsonNode node) throws Types.ParseException {
-        int value = node.asInt();
-        if (!node.canConvertToInt() && value < 256) {
+    static byte expectByte(Object node) throws Types.ParseException {
+        if (!(node instanceof Number)) {
             throw new Types.ParseException("Expected node to be a byte");
         }
-        return (byte) value;
+        return ((Number) node).byteValue();
     }
 
     /**
@@ -75,22 +74,25 @@ final class TypesyncUtil {
      * @return `root`.
      * @throws Types.ParseException if `root` is not an array.
      */
-    static JsonNode expectArray(JsonNode root) throws Types.ParseException {
-        if (!root.isArray()) {
+    static List<Object> expectArray(Object root) throws Types.ParseException {
+        if (root == null) {
+            return Collections.emptyList();
+        }
+        if (!(root instanceof List)) {
             throw new Types.ParseException("Expected node to be an array");
         }
-        return root;
+        return (List<Object>) root;
     }
 
     /**
-     * @param root Node to check if it's an object.
-     * @return `root`.
-     * @throws Types.ParseException if `root` is not an object.
+     * @param root Node to check if it's a Map.
+     * @return `root` as a Map.
+     * @throws Types.ParseException if `root` is not a Map.
      */
-    static JsonNode expectObject(JsonNode root) throws Types.ParseException {
-        if (!root.isObject()) {
+    static <T> Map<T, Object> expectMap(Object root) throws Types.ParseException {
+        if (!(root instanceof Map)) {
             throw new Types.ParseException("Expected node to be an object");
         }
-        return root;
+        return (Map<T, Object>) root;
     }
 }

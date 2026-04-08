@@ -1,20 +1,22 @@
 package dsdghidra.typesync;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+import java.util.Map;
+
 import static dsdghidra.typesync.TypesyncUtil.*;
 
-public record EnumDecl(@Nullable String name, EnumConstant[] constants, long size)
+public record EnumDecl(@Nullable TypePath path, EnumConstant[] constants, long size)
     implements TypeKind
 {
     @Override
     public @NotNull String getName() throws Types.NoNameException {
-        if (name == null) {
-            throw new Types.NoNameException("Enum has no name");
+        if (path == null) {
+            throw new Types.NoNameException("Enum has no path");
         }
-        return name;
+        return path.toString();
     }
 
     /**
@@ -22,33 +24,33 @@ public record EnumDecl(@Nullable String name, EnumConstant[] constants, long siz
      * @return an {@link EnumDecl}.
      * @throws Types.ParseException if the data is invalid.
      */
-    public static EnumDecl parse(JsonNode root) throws Types.ParseException {
-        String name;
+    public static EnumDecl parse(Map<String, Object> root) throws Types.ParseException {
+        TypePath path;
         try {
-            JsonNode nameNode = expectKey(root, "name");
-            name = nameNode.isNull() ? null : expectText(nameNode);
+            Object nameNode = expectKey(root, "path");
+            path = nameNode == null ? null : TypePath.parse(expectMap(nameNode));
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to parse name for enum", e);
+            throw new Types.ParseException("Failed to parse path for enum", e);
         }
 
-        JsonNode constantsNode;
+        List<Object> constantsNode;
         try {
             constantsNode = expectArray(expectKey(root, "constants"));
         } catch (Types.ParseException e) {
             throw new Types.ParseException(
-                "Failed to get enum constants for enum `" + name + "`",
+                "Failed to get enum constants for enum `" + path + "`",
                 e
             );
         }
 
         EnumConstant[] constants = new EnumConstant[constantsNode.size()];
         int i = 0;
-        for (JsonNode constantNode : constantsNode) {
+        for (Object constantNode : constantsNode) {
             try {
-                constants[i++] = EnumConstant.parse(constantNode);
+                constants[i++] = EnumConstant.parse(expectMap(constantNode));
             } catch (Types.ParseException e) {
                 throw new Types.ParseException(
-                    "Failed to parse enum constant for enum `" + name + "`",
+                    "Failed to parse enum constant for enum `" + path + "`",
                     e
                 );
             }
@@ -58,10 +60,10 @@ public record EnumDecl(@Nullable String name, EnumConstant[] constants, long siz
         try {
             size = expectLong(expectKey(root, "size"));
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to parse size of enum `" + name + "`", e);
+            throw new Types.ParseException("Failed to parse size of enum `" + path + "`", e);
         }
 
-        return new EnumDecl(name, constants, size);
+        return new EnumDecl(path, constants, size);
     }
 
     public record EnumConstant(String name, long value) {
@@ -70,12 +72,12 @@ public record EnumDecl(@Nullable String name, EnumConstant[] constants, long siz
          * @return an {@link EnumConstant}.
          * @throws Types.ParseException if the data is invalid.
          */
-        private static EnumConstant parse(JsonNode root) throws Types.ParseException {
+        private static EnumConstant parse(Map<String, Object> root) throws Types.ParseException {
             String name;
             try {
                 name = expectText(expectKey(root, "name"));
             } catch (Types.ParseException e) {
-                throw new Types.ParseException("Failed to parse name for enum constant", e);
+                throw new Types.ParseException("Failed to parse path for enum constant", e);
             }
 
             long value;

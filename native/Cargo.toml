@@ -11,6 +11,7 @@ anyhow = "1.0"
 cpp_demangle = "0.4"
 ds-decomp = "0.10"
 ds-rom = "0.6"
+exn-anyhow = "0.1"
 serde-saphyr = "0.0"
 type-crawler = { git = "https://github.com/AetiasHax/type-crawler", branch = "0.2", features = [
     "serde",

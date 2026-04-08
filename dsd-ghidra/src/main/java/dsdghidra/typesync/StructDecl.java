@@ -1,26 +1,28 @@
 package dsdghidra.typesync;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
+import java.util.Map;
 
 import static dsdghidra.typesync.TypesyncUtil.*;
 
 public record StructDecl(
-    @Nullable String name,
-    String[] baseTypes,
+    @Nullable TypePath path,
+    TypePath[] baseTypes,
     StructField[] fields,
     long size,
     long alignment,
-    boolean isClass
+    boolean isVirtual
 ) implements TypeKind
 {
     @Override
     public @NotNull String getName() throws Types.NoNameException {
-        if (name == null) {
-            throw new Types.NoNameException("Struct has no name");
+        if (path == null) {
+            throw new Types.NoNameException("Struct has no path");
         }
-        return name;
+        return path.toString();
     }
 
     /**
@@ -28,53 +30,53 @@ public record StructDecl(
      * @return a {@link StructDecl}.
      * @throws Types.ParseException if the data is invalid.
      */
-    public static StructDecl parse(JsonNode root) throws Types.ParseException {
-        String name;
+    public static StructDecl parse(Map<String, Object> root) throws Types.ParseException {
+        TypePath path;
         try {
-            JsonNode nameNode = expectKey(root, "name");
-            name = nameNode.isNull() ? null : expectText(nameNode);
+            Object nameNode = expectKey(root, "path");
+            path = nameNode == null ? null : TypePath.parse(expectMap(nameNode));
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to parse name for struct", e);
+            throw new Types.ParseException("Failed to parse path for struct", e);
         }
 
-        JsonNode baseTypesNode;
+        List<Object> baseTypesNode;
         try {
             baseTypesNode = expectArray(expectKey(root, "base_types"));
         } catch (Types.ParseException e) {
             throw new Types.ParseException(
-                "Failed to get base types array for struct `" + name + "`",
+                "Failed to get base types array for struct `" + path + "`",
                 e
             );
         }
 
-        String[] baseTypes = new String[baseTypesNode.size()];
+        TypePath[] baseTypes = new TypePath[baseTypesNode.size()];
         int i = 0;
-        for (JsonNode baseTypeNode : baseTypesNode) {
+        for (Object baseTypeNode : baseTypesNode) {
             try {
-                baseTypes[i++] = expectText(baseTypeNode);
+                baseTypes[i++] = TypePath.parse(expectMap(baseTypeNode));
             } catch (Types.ParseException e) {
-                throw new Types.ParseException("Failed to parse base type at index " + i + " for struct `" + name + "`");
+                throw new Types.ParseException("Failed to parse base type path at index " + i + " for struct `" + path + "`");
             }
         }
 
-        JsonNode fieldsNode;
+        List<Object> fieldsNode;
         try {
             fieldsNode = expectArray(expectKey(root, "fields"));
         } catch (Types.ParseException e) {
             throw new Types.ParseException(
-                "Failed to get fields array for struct `" + name + "`",
+                "Failed to get fields array for struct `" + path + "`",
                 e
             );
         }
 
         StructField[] fields = new StructField[fieldsNode.size()];
         i = 0;
-        for (JsonNode fieldNode : fieldsNode) {
+        for (Object fieldNode : fieldsNode) {
             try {
-                fields[i++] = StructField.parse(fieldNode);
+                fields[i++] = StructField.parse(expectMap(fieldNode));
             } catch (Types.ParseException e) {
                 throw new Types.ParseException(
-                    "Failed to parse struct field at index " + i + " for struct `" + name + "`",
+                    "Failed to parse struct field at index " + i + " for struct `" + path + "`",
                     e
                 );
             }
@@ -84,7 +86,7 @@ public record StructDecl(
         try {
             size = expectLong(expectKey(root, "size"));
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to parse size for struct `" + name + "`", e);
+            throw new Types.ParseException("Failed to parse size for struct `" + path + "`", e);
         }
 
         long alignment;
@@ -92,21 +94,21 @@ public record StructDecl(
             alignment = expectLong(expectKey(root, "alignment"));
         } catch (Types.ParseException e) {
             throw new Types.ParseException(
-                "Failed to parse alignment for struct `" + name + "`",
+                "Failed to parse alignment for struct `" + path + "`",
                 e
             );
         }
 
-        boolean isClass;
+        boolean isVirtual;
         try {
-            isClass = expectBool(expectKey(root, "is_class"));
+            isVirtual = expectBool(expectKey(root, "is_virtual"));
         } catch (Types.ParseException e) {
             throw new Types.ParseException(
-                "Failed to parse `is_class` for struct `" + name + "`",
+                "Failed to parse `is_virtual` for struct `" + path + "`",
                 e
             );
         }
 
-        return new StructDecl(name, baseTypes, fields, size, alignment, isClass);
+        return new StructDecl(path, baseTypes, fields, size, alignment, isVirtual);
     }
 }

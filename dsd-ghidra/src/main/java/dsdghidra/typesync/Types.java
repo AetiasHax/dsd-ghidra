@@ -1,65 +1,58 @@
 package dsdghidra.typesync;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.yaml.snakeyaml.Yaml;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-public class Types implements Iterable<Map.Entry<String, TypeKind>> {
-    private final Map<String, TypeKind> types;
+import static dsdghidra.typesync.TypesyncUtil.expectMap;
+
+public class Types implements Iterable<Map.Entry<TypePath, TypeKind>> {
+    private final Map<TypePath, TypeKind> types;
 
     public Types() {
         this.types = new HashMap<>();
     }
 
-    public Types(Map<String, TypeKind> types) {
+    public Types(Map<TypePath, TypeKind> types) {
         this.types = types;
     }
 
     /**
      * @param yamlString YAML string to parse.
      * @return a {@link Types} instance.
-     * @throws JsonProcessingException if `yamlString` is not valid YAML.
-     * @throws ParseException          if the YAML content is invalid.
+     * @throws ParseException if the YAML content is invalid.
      */
-    public static Types parseYaml(String yamlString)
-        throws JsonProcessingException, ParseException {
-        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-        JsonNode root = mapper.readTree(yamlString);
+    public static Types parseYaml(String yamlString) throws ParseException {
+        Yaml yaml = new Yaml();
+        var root = expectMap(yaml.load(yamlString));
 
         Types types = new Types();
-        JsonNode typesNode = root.get("types");
-        if (typesNode == null) {
-            throw new ParseException("Expected `types` field in root");
-        }
+        var typesNode = expectMap(root.get("types"));
 
-        for (var it = typesNode.fields(); it.hasNext(); ) {
-            var typeEntry = it.next();
-            String keyName = typeEntry.getKey();
-            JsonNode value = typeEntry.getValue();
+        for (var entry : typesNode.entrySet()) {
+            Object key = entry.getKey();
+            Object value = entry.getValue();
+
+            TypePath typePath;
+            try {
+                typePath = TypePath.parse(expectMap(key));
+            } catch (ParseException e) {
+                throw new ParseException("Failed to parse type path", e);
+            }
 
             TypeKind type;
             try {
                 type = TypeKind.parse(value);
             } catch (ParseException e) {
-                throw new ParseException("Failed to parse type `" + keyName + "`", e);
+                throw new ParseException("Failed to parse type `" + typePath + "`", e);
             }
 
-            String name;
-            try {
-                name = type.getName();
-            } catch (NoNameException e) {
-                throw new ParseException("Type has no name", e);
-            }
-
-            if (!types.addIfAbsent(name, type)) {
-                throw new ParseException("Duplicate type name `" + name + "`");
+            if (!types.addIfAbsent(typePath, type)) {
+                throw new ParseException("Duplicate type path `" + typePath + "`");
             }
         }
 
@@ -67,24 +60,24 @@ public class Types implements Iterable<Map.Entry<String, TypeKind>> {
     }
 
     /**
-     * @param name Name of type.
+     * @param path Name of type.
      * @param type Which type it is.
-     * @return `true` if added, `false` if another type exists with the given name.
+     * @return `true` if added, `false` if another type exists with the given path.
      */
-    public boolean addIfAbsent(String name, TypeKind type) {
-        if (this.types.containsKey(name)) {
+    public boolean addIfAbsent(TypePath path, TypeKind type) {
+        if (this.types.containsKey(path)) {
             return false;
         }
-        this.types.put(name, type);
+        this.types.put(path, type);
         return true;
     }
 
-    public @Nullable TypeKind get(String name) {
+    public @Nullable TypeKind get(TypePath name) {
         return this.types.get(name);
     }
 
     @Override
-    public @NotNull Iterator<Map.Entry<String, TypeKind>> iterator() {
+    public @NotNull Iterator<Map.Entry<TypePath, TypeKind>> iterator() {
         return this.types.entrySet().iterator();
     }
 

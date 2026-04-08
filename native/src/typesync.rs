@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use exn_anyhow::into_anyhow;
 use type_crawler::{Env, EnvOptions, TypeCrawler, WordSize};
 use walkdir::WalkDir;
 
@@ -25,11 +26,10 @@ pub fn get_type_sync_yaml(options: SafeTypeSyncOptions) -> Result<String> {
     });
     // Disable libclang crash recovery to avoid overriding signal handlers in the JVM
     std::env::set_var("LIBCLANG_DISABLE_CRASH_RECOVERY", "1");
-    let mut type_crawler = TypeCrawler::new(env)?;
+    let mut type_crawler = TypeCrawler::new(env).map_err(into_anyhow)?;
     for include in &options.includes {
-        type_crawler.add_include_path(include)?;
+        type_crawler.add_include_path(include).map_err(into_anyhow)?;
     }
-    let mut types = type_crawler::Types::new();
     for include in &options.includes {
         for entry in WalkDir::new(include)
             .sort_by_file_name()
@@ -42,11 +42,17 @@ pub fn get_type_sync_yaml(options: SafeTypeSyncOptions) -> Result<String> {
             if !path.is_file() {
                 continue;
             }
-            let new_types = type_crawler.parse_file(path).with_context(|| format!("while parsing file {}", path.display()))?;
-            types.extend(new_types).with_context(|| format!("after parsing file {}", path.display()))?;
+            type_crawler
+                .parse_file(path)
+                .map_err(into_anyhow)
+                .with_context(|| format!("while parsing file {}", path.display()))?;
         }
     }
-    Ok(serde_saphyr::to_string(&types)?)
+    let types = type_crawler.into_types();
+    Ok(serde_saphyr::to_string_with_options(&types, serde_saphyr::SerializerOptions {
+        empty_as_braces: false, // bug in serde-saphyr fails to indent empty lists when preceded by an enum struct variant
+        ..Default::default()
+    })?)
 }
 
 #[repr(C)]

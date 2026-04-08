@@ -1,7 +1,8 @@
 package dsdghidra.typesync;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Map;
 
 import static dsdghidra.typesync.TypesyncUtil.expectKey;
 
@@ -16,8 +17,8 @@ public record PointerType(TypeKind pointeeType) implements TypeKind {
      * @return a {@link PointerType} instance.
      * @throws Types.ParseException if the data is invalid.
      */
-    public static PointerType parse(JsonNode root) throws Types.ParseException {
-        JsonNode pointeeTypeNode = expectKey(root, "pointee_type");
+    public static PointerType parse(Map<String, Object> root) throws Types.ParseException {
+        Object pointeeTypeNode = expectKey(root, "pointee_type");
         TypeKind pointeeType;
         try {
             pointeeType = TypeKind.parse(pointeeTypeNode);

@@ -1,11 +1,10 @@
 package dsdghidra.typesync;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.jetbrains.annotations.NotNull;
 
-import static dsdghidra.typesync.TypesyncUtil.expectText;
+import java.util.Map;
 
-public record NamedType(String typeName) implements TypeKind {
+public record NamedType(TypePath typePath) implements TypeKind {
     @Override
     public @NotNull String getName() throws Types.NoNameException {
         throw new Types.NoNameException("Named types do not have names themselves");
@@ -16,13 +15,13 @@ public record NamedType(String typeName) implements TypeKind {
      * @return a {@link NamedType} instance.
      * @throws Types.ParseException if the data is not a string or an empty string.
      */
-    public static NamedType parse(JsonNode root) throws Types.ParseException {
-        String typeName;
+    public static NamedType parse(Map<String, Object> root) throws Types.ParseException {
+        TypePath typePath;
         try {
-            typeName = expectText(root);
+            typePath = TypePath.parse(root);
         } catch (Types.ParseException e) {
-            throw new Types.ParseException("Failed to parse name for named type", e);
+            throw new Types.ParseException("Failed to parse path for named type", e);
         }
-        return new NamedType(typeName);
+        return new NamedType(typePath);
     }
 }

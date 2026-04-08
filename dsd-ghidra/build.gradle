@@ -60,7 +60,7 @@ dependencies {
     // Any external dependencies added here will automatically be copied to the lib/ directory when
     // this extension is built.
     implementation 'org.jetbrains:annotations:24.0.0'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.3'
+    implementation 'org.yaml:snakeyaml:2.6'
 }
 
 // Exclude additional files from the built extension

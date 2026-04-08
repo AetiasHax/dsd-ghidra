@@ -1,7 +1,8 @@
 package dsdghidra.typesync;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Map;
 
 import static dsdghidra.typesync.TypesyncUtil.expectKey;
 import static dsdghidra.typesync.TypesyncUtil.expectLong;
@@ -17,8 +18,8 @@ public record ArrayType(TypeKind elementType, long size) implements TypeKind {
      * @return an {@link ArrayType} instance.
      * @throws Types.ParseException if the data is invalid.
      */
-    public static ArrayType parse(JsonNode root) throws Types.ParseException {
-        JsonNode elementTypeNode = expectKey(root, "element_type");
+    public static ArrayType parse(Map<String, Object> root) throws Types.ParseException {
+        Object elementTypeNode = expectKey(root, "element_type");
         TypeKind elementType;
         try {
             elementType = TypeKind.parse(elementTypeNode);
@@ -28,8 +29,8 @@ public record ArrayType(TypeKind elementType, long size) implements TypeKind {
 
         long size;
         try {
-            JsonNode sizeNode = expectKey(root, "size");
-            size = sizeNode.isNull() ? -1 : expectLong(sizeNode);
+            Object sizeNode = expectKey(root, "size");
+            size = sizeNode == null ? -1 : expectLong(sizeNode);
         } catch (Types.ParseException e) {
             throw new Types.ParseException("Failed to parse size of array", e);
         }
