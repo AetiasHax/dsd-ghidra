@@ -17,8 +17,7 @@ public class SyncRelocation {
     public final @NotNull Address from;
     private final @NotNull Program program;
 
-    public SyncRelocation(
-        @NotNull Program program,
+    public SyncRelocation(@NotNull Program program,
         @NotNull DsSection dsSection,
         @NotNull DsdSyncRelocation dsdRelocation
     ) throws DsSection.Exception {
@@ -32,6 +31,15 @@ public class SyncRelocation {
     public boolean needsUpdate() {
         ReferenceManager referenceManager = program.getReferenceManager();
         Reference[] references = referenceManager.getReferencesFrom(from);
+
+        switch (dsdRelocation.getKind()) {
+            case ArmCall, ThumbCall, ArmCallThumb, ThumbCallArm, ArmBranch, Load -> {
+            }
+            case OverlayId, LinkTimeConst -> {
+                // Only used for linking, not relevant for Ghidra projects
+                return false;
+            }
+        }
 
         switch (dsdRelocation.getModule()) {
             case None -> {
@@ -117,7 +125,8 @@ public class SyncRelocation {
         referenceManager.removeAllReferencesFrom(from);
     }
 
-    public void addReferences(@NotNull FlatProgramAPI api, @NotNull DsModules dsModules) throws DsSection.Exception, DsModules.Exception {
+    public void addReferences(@NotNull FlatProgramAPI api, @NotNull DsModules dsModules)
+        throws DsSection.Exception, DsModules.Exception {
         switch (dsdRelocation.getModule()) {
             case None -> {
             }
@@ -139,8 +148,7 @@ public class SyncRelocation {
         }
     }
 
-    private void addReference(
-        @NotNull FlatProgramAPI api,
+    private void addReference(@NotNull FlatProgramAPI api,
         @NotNull DsModule toModule,
         boolean primary
     ) throws DsSection.Exception {
@@ -152,7 +160,13 @@ public class SyncRelocation {
 
         RefType refType = dsdRelocation.getKind().getRefType(dsdRelocation.conditional);
 
-        Reference reference = referenceManager.addMemoryReference(from, to, refType, SourceType.USER_DEFINED, 0);
+        Reference reference = referenceManager.addMemoryReference(
+            from,
+            to,
+            refType,
+            SourceType.USER_DEFINED,
+            0
+        );
         referenceManager.setPrimary(reference, primary);
 
         try {
@@ -162,22 +176,17 @@ public class SyncRelocation {
     }
 
     private static boolean isMain(@NotNull String addressSpaceName) {
-        return addressSpaceName.equals("arm9_main") ||
-            addressSpaceName.equals("arm9_main.bss") ||
-            addressSpaceName.equals("ARM9_Main_Memory") ||
-            addressSpaceName.equals("ARM9_Main_Memory.bss");
+        return addressSpaceName.equals("arm9_main") || addressSpaceName.equals("arm9_main.bss") || addressSpaceName.equals(
+            "ARM9_Main_Memory") || addressSpaceName.equals("ARM9_Main_Memory.bss");
     }
 
     private static boolean isItcm(@NotNull String addressSpaceName) {
-        return addressSpaceName.equals("itcm") ||
-            addressSpaceName.equals("ITCM");
+        return addressSpaceName.equals("itcm") || addressSpaceName.equals("ITCM");
     }
 
     private static boolean isDtcm(@NotNull String addressSpaceName) {
-        return addressSpaceName.equals("dtcm") ||
-            addressSpaceName.equals("dtcm.bss") ||
-            addressSpaceName.equals("DTCM") ||
-            addressSpaceName.equals("DTCM.bss");
+        return addressSpaceName.equals("dtcm") || addressSpaceName.equals("dtcm.bss") || addressSpaceName.equals(
+            "DTCM") || addressSpaceName.equals("DTCM.bss");
     }
 
     private static int parseAutoloadIndex(@NotNull String blockName) {

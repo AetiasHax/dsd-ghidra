@@ -5,12 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public enum DsdRelocationKind {
-    ArmCall,
-    ThumbCall,
-    ArmCallThumb,
-    ThumbCallArm,
-    ArmBranch,
-    Load;
+    ArmCall, ThumbCall, ArmCallThumb, ThumbCallArm, ArmBranch, Load, OverlayId, LinkTimeConst;
 
     public static final @NotNull DsdRelocationKind[] VALUES = DsdRelocationKind.values();
 

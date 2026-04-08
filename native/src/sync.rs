@@ -79,7 +79,7 @@ pub struct SafeDsdSyncDataSymbol {
 pub struct SafeDsdSyncRelocation {
     from: u32,
     to: u32,
-    kind: RelocationKind,
+    kind: DsdRelocationKind,
     module: DsdSyncRelocationModule,
     indices: Vec<u16>,
     conditional: bool,
@@ -335,6 +335,16 @@ impl SafeDsdSyncSection {
             .relocations()
             .iter_range(section.address_range())
             .map(|(_, relocation)| {
+                let reloc_kind = match relocation.kind() {
+                    RelocationKind::ArmCall => DsdRelocationKind::ArmCall,
+                    RelocationKind::ThumbCall => DsdRelocationKind::ThumbCall,
+                    RelocationKind::ArmCallThumb => DsdRelocationKind::ArmCallThumb,
+                    RelocationKind::ThumbCallArm => DsdRelocationKind::ThumbCallArm,
+                    RelocationKind::ArmBranch => DsdRelocationKind::ArmBranch,
+                    RelocationKind::Load => DsdRelocationKind::Load,
+                    RelocationKind::OverlayId => DsdRelocationKind::OverlayId,
+                    RelocationKind::LinkTimeConst(_) => DsdRelocationKind::LinkTimeConst,
+                };
                 let (reloc_module, indices) = match relocation.module() {
                     RelocationModule::None => (DsdSyncRelocationModule::None, vec![]),
                     RelocationModule::Overlay { id } => (DsdSyncRelocationModule::Overlays, vec![*id]),
@@ -360,7 +370,7 @@ impl SafeDsdSyncSection {
                 SafeDsdSyncRelocation {
                     from: relocation.from_address(),
                     to: (relocation.to_address() as i32 + relocation.addend_value()) as u32,
-                    kind: relocation.kind(),
+                    kind: reloc_kind,
                     module: reloc_module,
                     indices,
                     conditional,
@@ -555,10 +565,23 @@ pub enum DsdSyncDataKind {
 pub struct DsdSyncRelocation {
     from: u32,
     to: u32,
-    kind: RelocationKind,
+    kind: DsdRelocationKind,
     module: DsdSyncRelocationModule,
     overlays: UnsafeList<u16>,
     conditional: Bool32,
+}
+
+#[repr(C)]
+#[derive(Clone)]
+pub enum DsdRelocationKind {
+    ArmCall,
+    ThumbCall,
+    ArmCallThumb,
+    ThumbCallArm,
+    ArmBranch,
+    Load,
+    OverlayId,
+    LinkTimeConst,
 }
 
 #[repr(C)]
