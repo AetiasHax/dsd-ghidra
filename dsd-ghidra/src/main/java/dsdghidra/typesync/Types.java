@@ -4,8 +4,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.yaml.snakeyaml.Yaml;
 
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static dsdghidra.typesync.TypesyncUtil.expectMap;
@@ -14,7 +14,7 @@ public class Types implements Iterable<Map.Entry<TypePath, TypeKind>> {
     private final Map<TypePath, TypeKind> types;
 
     public Types() {
-        this.types = new HashMap<>();
+        this.types = new LinkedHashMap<>();
     }
 
     public Types(Map<TypePath, TypeKind> types) {
