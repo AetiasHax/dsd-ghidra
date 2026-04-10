@@ -19,6 +19,7 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
     private static final String SHORT_ENUMS_KEY = "shortEnums";
     private static final String SIGNED_CHAR_KEY = "signedChar";
     private static final String DRY_RUN_KEY = "dryRun";
+    private static final String DELETE_OLD_TYPES_KEY = "deleteOldTypes";
     private static final String DUMP_YAML_KEY = "dumpYaml";
 
     private static final int PAD = 5;
@@ -35,6 +36,7 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
     private final JCheckBox shortEnumsCheckbox;
     private final JCheckBox signedCharCheckbox;
     private final JCheckBox dryRunCheckbox;
+    private final JCheckBox deleteOldTypesCheckbox;
     private final JCheckBox dumpYamlCheckbox;
 
     public TypeSyncConfigDialog(Properties properties) {
@@ -57,6 +59,10 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
             "Dry run",
             PropertiesUtil.getBoolean(this.properties, DRY_RUN_KEY, false)
         );
+        this.deleteOldTypesCheckbox = new JCheckBox(
+            "Delete old types",
+            PropertiesUtil.getBoolean(this.properties, DELETE_OLD_TYPES_KEY, true)
+        );
         this.dumpYamlCheckbox = new JCheckBox(
             "Dump YAML",
             PropertiesUtil.getBoolean(this.properties, DUMP_YAML_KEY, false)
@@ -73,6 +79,7 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
         boolean shortEnums,
         boolean signedChar,
         boolean dryRun,
+        boolean deleteOldTypes,
         boolean dumpYaml
     ) {}
 
@@ -92,6 +99,7 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
         boolean shortEnums = this.shortEnumsCheckbox.isSelected();
         boolean signedChar = this.signedCharCheckbox.isSelected();
         boolean dryRun = this.dryRunCheckbox.isSelected();
+        boolean deleteOldTypes = this.deleteOldTypesCheckbox.isSelected();
         boolean dumpYaml = this.dumpYamlCheckbox.isSelected();
 
         PropertiesUtil.setList(this.properties, INCLUDES_KEY, includes);
@@ -99,9 +107,18 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
         PropertiesUtil.setBoolean(this.properties, SHORT_ENUMS_KEY, shortEnums);
         PropertiesUtil.setBoolean(this.properties, SIGNED_CHAR_KEY, signedChar);
         PropertiesUtil.setBoolean(this.properties, DRY_RUN_KEY, dryRun);
+        PropertiesUtil.setBoolean(this.properties, DELETE_OLD_TYPES_KEY, deleteOldTypes);
         PropertiesUtil.setBoolean(this.properties, DUMP_YAML_KEY, dumpYaml);
 
-        this.result = new Result(includes, excludes, shortEnums, signedChar, dryRun, dumpYaml);
+        this.result = new Result(
+            includes,
+            excludes,
+            shortEnums,
+            signedChar,
+            dryRun,
+            deleteOldTypes,
+            dumpYaml
+        );
         this.close();
     }
 
@@ -144,6 +161,10 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
 
         gbc.insets = NO_INSETS;
         panel.add(this.dryRunCheckbox, gbc);
+        gbc.gridy++;
+
+        gbc.insets = NO_INSETS;
+        panel.add(this.deleteOldTypesCheckbox, gbc);
         gbc.gridy++;
 
         gbc.weighty = 1.0;
