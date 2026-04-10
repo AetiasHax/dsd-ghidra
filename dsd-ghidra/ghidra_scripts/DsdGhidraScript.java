@@ -4,10 +4,7 @@ import ghidra.framework.model.Project;
 import ghidra.framework.model.ProjectData;
 import ghidra.framework.model.ProjectLocator;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
@@ -49,5 +46,11 @@ public abstract class DsdGhidraScript extends GhidraScript {
             new FileOutputStream(propertiesFile),
             "Properties for the " + className + ".java script"
         );
+    }
+
+    protected static String getExceptionStackTrace(Exception e) {
+        StringWriter writer = new StringWriter();
+        e.printStackTrace(new PrintWriter(writer));
+        return writer.toString();
     }
 }

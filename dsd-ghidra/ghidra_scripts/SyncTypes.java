@@ -19,7 +19,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
 public class SyncTypes extends DsdGhidraScript {
@@ -36,6 +35,7 @@ public class SyncTypes extends DsdGhidraScript {
     private DataTypeConflictHandler dataTypeConflictHandler;
     private Types types;
     private int anonymousTypeCount;
+    private Map<PointerPlaceholder, TypeKind> pointerPlaceholders;
 
     @Override
     protected void run() throws Exception {
@@ -59,13 +59,13 @@ public class SyncTypes extends DsdGhidraScript {
         this.saveProperties();
 
         TypeSyncOptions options = new TypeSyncOptions();
-        UnsafeString[] includeStrings = (UnsafeString[]) configResult
+        UnsafeString[] includeStrings = configResult
             .includes()
             .stream()
             .map(file -> new UnsafeString(file.toString()))
             .toArray(UnsafeString[]::new);
         options.includes = new UnsafeList<>(includeStrings);
-        UnsafeString[] excludeStrings = (UnsafeString[]) configResult
+        UnsafeString[] excludeStrings = configResult
             .excludes()
             .stream()
             .map(file -> new UnsafeString(file.toString()))
@@ -95,23 +95,15 @@ public class SyncTypes extends DsdGhidraScript {
             }
             DsdGhidra.INSTANCE.free_error(dsdError.memory);
         }
-
-        //        this.printAllTypePaths();
-        //        this.testTypes();
     }
 
     private void doSync(String yaml) throws Exception {
         this.types = Types.parseYaml(yaml);
 
-        //        try (var writer = new FileWriter("/home/aetias/typesync.yaml")) {
-        //            writer.write(yaml);
-        //        } catch (IOException e) {
-        //            throw new RuntimeException(e);
-        //        }
-
         this.updatingTypes = new ArrayList<>();
         this.updatedTypes = new HashMap<>();
         this.anonymousTypeCount = 0;
+        this.pointerPlaceholders = new HashMap<>();
 
         for (var entry : types) {
             TypePath name = entry.getKey();
@@ -119,22 +111,28 @@ public class SyncTypes extends DsdGhidraScript {
             this.updateType(type);
         }
 
+        for (var placeholder : pointerPlaceholders.entrySet()) {
+            placeholder.getKey().resolve(placeholder.getValue());
+        }
+
+        this.pointerPlaceholders = null;
         this.updatedTypes = null;
         this.updatingTypes = null;
         this.types = null;
     }
 
-    private @NotNull DataType updateType(@NotNull TypeKind type) throws Exception {
+    private @NotNull DataType updateType(@NotNull TypeKind type)
+        throws CycleException, TypesyncException {
         String name;
         try {
             name = type.getName();
         } catch (Types.NoNameException e) {
-            name = "$anonymous" + anonymousTypeCount;
+            name = "{anonymous" + anonymousTypeCount + "}";
             anonymousTypeCount += 1;
         }
 
         if (updatingTypes.contains(name)) {
-            throw new Exception("Cycle detected: " + String.join(
+            throw new CycleException("Cycle detected: " + String.join(
                 " -> ",
                 updatingTypes
             ) + " -> " + name);
@@ -153,14 +151,14 @@ public class SyncTypes extends DsdGhidraScript {
                 case EnumDecl enumDecl -> addEnumType(enumDecl, name);
                 case FunctionType functionType -> addFunctionType(functionType, name);
                 case NamedType namedType -> addNamedType(namedType);
-                case PointerType pointerType -> addPointerType();
+                case PointerType pointerType -> addPointerType(pointerType);
                 case StructDecl structDecl -> addStructType(structDecl, name);
                 case Typedef typedef -> addTypedef(typedef, name);
                 case UnionDecl unionDecl -> addUnionType(unionDecl, name);
                 case PrimitiveType primitiveType -> {
                     DataType dataType = this.dataTypeManager.getDataType("/" + primitiveType.ghidraTypeName());
                     if (dataType == null) {
-                        throw new Exception("Primitive type not found" + primitiveType.ghidraTypeName());
+                        throw new TypesyncException("Primitive type not found" + primitiveType.ghidraTypeName());
                     }
                     yield dataType;
                 }
@@ -173,26 +171,43 @@ public class SyncTypes extends DsdGhidraScript {
         }
     }
 
-    private @NotNull DataType addUnionType(UnionDecl type, String name) throws Exception {
+    private @NotNull DataType addUnionType(UnionDecl type, String name)
+        throws CycleException, TypesyncException {
         var unionType = (Union) addTemporaryType(new UnionDataType(CATEGORY_PATH, name));
         for (Field field : type.fields()) {
             DataType fieldType = this.updateType(field.kind());
             int bitFieldWidth = field.bitFieldWidth();
+            DataTypeComponent component;
             if (bitFieldWidth > 0) {
-                unionType.addBitField(fieldType, bitFieldWidth, field.name(), "");
+                try {
+                    component = unionType.addBitField(fieldType, bitFieldWidth, field.name(), "");
+                } catch (InvalidDataTypeException e) {
+                    throw new TypesyncException("Invalid data type for bit field", e);
+                }
             } else {
-                unionType.add(fieldType, field.name(), "");
+                component = unionType.add(fieldType, field.name(), "");
+            }
+            if (fieldType instanceof Pointer pointer && pointer.getDataType() == null) {
+                this.pointerPlaceholders.put(
+                    new UnionPointerField(
+                        this,
+                        unionType,
+                        component.getOrdinal()
+                    ), field.kind()
+                );
             }
         }
         return unionType;
     }
 
-    private @NotNull DataType addTypedef(Typedef type, String name) throws Exception {
+    private @NotNull DataType addTypedef(Typedef type, String name)
+        throws TypesyncException, CycleException, TypesyncException {
         DataType underlyingType = this.updateType(type.underlyingType());
         return addTemporaryType(new TypedefDataType(CATEGORY_PATH, name, underlyingType));
     }
 
-    private @NotNull DataType addStructType(StructDecl struct, String name) throws Exception {
+    private @NotNull DataType addStructType(StructDecl struct, String name)
+        throws TypesyncException, CycleException, TypesyncException {
         var structType = (Structure) addTemporaryType(new StructureDataType(
             CATEGORY_PATH,
             name,
@@ -213,7 +228,7 @@ public class SyncTypes extends DsdGhidraScript {
             try {
                 baseDataType = this.updateType(baseType);
             } catch (Exception e) {
-                throw new Exception(
+                throw new TypesyncException(
                     String.format(
                         "Failed to update base struct %s for struct %s",
                         baseTypePath,
@@ -232,29 +247,51 @@ public class SyncTypes extends DsdGhidraScript {
             while (structType.getLength() < field.offset() / 8) {
                 structType.add(DataType.DEFAULT);
             }
+            DataTypeComponent component;
             if (bitFieldWidth > 0) {
-                structType.addBitField(fieldType, bitFieldWidth, name, "");
+                try {
+                    component = structType.addBitField(fieldType, bitFieldWidth, name, "");
+                } catch (InvalidDataTypeException e) {
+                    throw new TypesyncException("Invalid data type for bit field", e);
+                }
             } else {
-                structType.add(fieldType, field.field().name(), "");
+                component = structType.add(fieldType, field.field().name(), "");
+            }
+            if (fieldType instanceof Pointer pointer && pointer.getDataType() == null) {
+                this.pointerPlaceholders.put(
+                    new StructPointerField(
+                        this,
+                        structType,
+                        component.getOrdinal()
+                    ),
+                    field.field().kind()
+                );
             }
         }
         return structType;
     }
 
-    private @NotNull DataType addPointerType() {
-        // TODO: Fill in placeholder pointer
-        return new PointerDataType();
+    private @NotNull DataType addPointerType(PointerType pointerType) throws TypesyncException {
+        try {
+            DataType dataType = this.updateType(pointerType.pointeeType());
+            return new PointerDataType(dataType);
+        } catch (CycleException e) {
+            // If this is used for a struct/union field, the pointee type will be resolved later
+            return new PointerDataType();
+        }
     }
 
-    private @NotNull DataType addNamedType(NamedType type) throws Exception {
+    private @NotNull DataType addNamedType(NamedType type)
+        throws TypesyncException, CycleException {
         TypeKind namedType = this.types.get(type.typePath());
         if (namedType == null) {
-            throw new Exception("Named type not found: " + type.typePath());
+            throw new TypesyncException("Named type not found: " + type.typePath());
         }
         return this.updateType(namedType);
     }
 
-    private @NotNull DataType addFunctionType(FunctionType type, String name) throws Exception {
+    private @NotNull DataType addFunctionType(FunctionType type, String name)
+        throws CycleException, TypesyncException {
         var functionType = (FunctionDefinition) addTemporaryType(new FunctionDefinitionDataType(name));
         DataType returnType = this.updateType(type.returnType());
         functionType.setReturnType(returnType);
@@ -277,7 +314,7 @@ public class SyncTypes extends DsdGhidraScript {
         return enumType;
     }
 
-    private DataType addArrayType(ArrayType type) throws Exception {
+    private DataType addArrayType(ArrayType type) throws CycleException, TypesyncException {
         DataType elementType = this.updateType(type.elementType());
         int numElements = (int) type.size();
         if (numElements < 0) {
@@ -288,7 +325,6 @@ public class SyncTypes extends DsdGhidraScript {
     }
 
     private DataType addTemporaryType(DataType dataType) {
-        //noinspection unchecked
         return this.tempCategory.addDataType(dataType, DataTypeConflictHandler.DEFAULT_HANDLER);
     }
 
@@ -296,72 +332,123 @@ public class SyncTypes extends DsdGhidraScript {
         return a.getCategoryPath().equals(b.getCategoryPath()) && a.getName().equals(b.getName());
     }
 
-    private void testTypes() {
-        var dword = this.dataTypeManager.getDataType("/dword");
-        this.println(dword.toString());
-
-        // Typedef
-        var newU32Typedef = new TypedefDataType(CATEGORY_PATH, "u32", dword);
-        var u32 = (TypeDef) this.category.addDataType(
-            newU32Typedef,
-            DataTypeConflictHandler.KEEP_HANDLER
-        );
-
-        // Struct
-        var newStruct = new StructureDataType(CATEGORY_PATH, "MyTestStruct", 0);
-        var struct = (Structure) this.category.addDataType(
-            newStruct,
-            DataTypeConflictHandler.KEEP_HANDLER
-        );
-
-        struct.deleteAll();
-        struct.add(u32, "mUnk_00", "");
-
-        this.println(struct.getPathName());
-
-        // Enum
-        var newEnumType = new EnumDataType(CATEGORY_PATH, "MyTestEnum", 4);
-        var enumType = (Enum) this.category.addDataType(
-            newEnumType,
-            DataTypeConflictHandler.KEEP_HANDLER
-        );
-
-        for (var name : enumType.getNames()) {
-            enumType.remove(name);
+    private static class TypesyncException extends Exception {
+        public TypesyncException(String message) {
+            super(message);
         }
-        enumType.add("FOO", 1);
-        enumType.add("BAR", 2);
-        enumType.add("BAZ", 6);
 
-        // Union
-        var newUnion = new UnionDataType(CATEGORY_PATH, "MyTestUnion");
-        var union = (Union) this.category.addDataType(
-            newUnion,
-            DataTypeConflictHandler.KEEP_HANDLER
-        );
-
-        var ordinals = Arrays
-            .stream(union.getComponents())
-            .map(DataTypeComponent::getOrdinal)
-            .collect(Collectors.toSet());
-        union.delete(ordinals);
-
-        union.add(struct);
-        union.add(u32, "intValue", "");
-        union.add(enumType, "enumThing", "");
-    }
-
-    private void printAllTypePaths() {
-        for (var type : this.getCustomDataTypes()) {
-            this.println(type.getDataTypePath().toString());
+        public TypesyncException(String message, Throwable cause) {
+            super(message, cause);
         }
     }
 
-    private @NotNull List<DataType> getCustomDataTypes() {
-        List<DataType> dataTypeList = new ArrayList<>();
-        this.dataTypeManager.getAllDataTypes(dataTypeList);
+    private static class CycleException extends Exception {
+        public CycleException(String message) {
+            super(message);
+        }
 
-        dataTypeList.removeIf(type -> type instanceof BuiltInDataType || type instanceof Array || type instanceof Pointer);
-        return Collections.unmodifiableList(dataTypeList);
+        public CycleException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    private interface PointerPlaceholder {
+        void resolve(TypeKind typeKind);
+    }
+
+    private record StructPointerField(SyncTypes script, Structure structure, int ordinal)
+        implements PointerPlaceholder
+    {
+        @Override
+        public void resolve(TypeKind typeKind) {
+            DataTypeComponent component = structure.getComponent(ordinal);
+            script.println("Resolving pointer at struct field " + component.getFieldName() + " of " + structure.getPathName());
+
+            DataType dataType;
+            try {
+                dataType = script.updateType(typeKind);
+            } catch (CycleException | TypesyncException e) {
+                script.printerr(String.format(
+                    "Failed to resolve pointer type for struct field %s in %s, see error:\n%s",
+                    component.getFieldName(),
+                    structure.getPathName(),
+                    DsdGhidraScript.getExceptionStackTrace(e)
+                ));
+                return;
+            }
+
+            structure.replace(
+                ordinal,
+                new PointerDataType(dataType),
+                component.getLength(),
+                component.getFieldName(),
+                component.getComment()
+            );
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (object == null || getClass() != object.getClass()) {
+                return false;
+            }
+            StructPointerField that = (StructPointerField) object;
+            return ordinal == that.ordinal && Objects.equals(
+                structure.getCategoryPath(),
+                that.structure.getCategoryPath()
+            );
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(structure.getCategoryPath(), ordinal);
+        }
+    }
+
+    private record UnionPointerField(SyncTypes script, Union union, int ordinal)
+        implements PointerPlaceholder
+    {
+        @Override
+        public void resolve(TypeKind typeKind) {
+            DataTypeComponent component = union.getComponent(ordinal);
+
+            DataType dataType;
+            try {
+                dataType = script.updateType(typeKind);
+            } catch (CycleException | TypesyncException e) {
+                script.printerr(String.format(
+                    "Failed to resolve pointer type for union field %s in %s, see error:\n%s",
+                    component.getFieldName(),
+                    union.getPathName(),
+                    DsdGhidraScript.getExceptionStackTrace(e)
+                ));
+                return;
+            }
+
+            union.delete(ordinal);
+            union.insert(
+                ordinal,
+                new PointerDataType(dataType),
+                component.getLength(),
+                component.getFieldName(),
+                component.getComment()
+            );
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (object == null || getClass() != object.getClass()) {
+                return false;
+            }
+            UnionPointerField that = (UnionPointerField) object;
+            return ordinal == that.ordinal && Objects.equals(
+                union.getCategoryPath(),
+                that.union.getCategoryPath()
+            );
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(union.getCategoryPath(), ordinal);
+        }
     }
 }
