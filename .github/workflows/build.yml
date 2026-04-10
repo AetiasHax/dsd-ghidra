@@ -1,10 +1,47 @@
-name: Release dsd-ghidra
+name: Build
 
 on:
+  pull_request:
   workflow_dispatch:
 
+env:
+  RUSTFLAGS: -D warnings
+
 jobs:
-  build:
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache Rust workspace
+        uses: Swatinem/rust-cache@v2
+
+      - name: Clippy
+        run: cargo clippy
+
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+
+      - name: Format
+        run: cargo fmt --all --check
+
+  build-shared-libs:
     strategy:
       matrix:
         include:
@@ -54,16 +91,14 @@ jobs:
           path: target/${{ matrix.target }}/release/${{ matrix.file }}
           if-no-files-found: error
 
-  publish:
+  build-extension:
     runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      contents: write
+    needs: build-shared-libs
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download artifact
+      - name: Download artifacts (shared libraries)
         uses: actions/download-artifact@v4
         with:
           path: ./dsd-ghidra/src/main/resources
@@ -88,10 +123,42 @@ jobs:
         run: |
           gradle --project-dir dsd-ghidra --info --stacktrace
 
+      - name: Get artifact filename
+        id: artifact_name
+        run: echo "name=$(basename dsd-ghidra/dist/ghidra_*_dsd-ghidra.zip)" >> $GITHUB_OUTPUT
+
+      - name: Delete artifacts (shared libraries)
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: "*"
+
+      - name: Upload artifact (Ghidra extension)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact_name.outputs.name }}
+          path: dsd-ghidra/dist/ghidra_*_dsd-ghidra.zip
+          if-no-files-found: error
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build-extension
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ghidra_*_dsd-ghidra.zip
+          path: artifacts
+
       - name: Upload release
         uses: softprops/action-gh-release@v2
         with:
-          files: dsd-ghidra/dist/ghidra_*_dsd-ghidra.zip
+          files: artifacts/**
           draft: true
           generate_release_notes: true
           fail_on_unmatched_files: true

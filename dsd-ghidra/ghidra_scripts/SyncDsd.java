@@ -16,7 +16,10 @@ import ghidra.framework.model.Project;
 import ghidra.framework.model.ProjectData;
 import ghidra.framework.model.ProjectLocator;
 import ghidra.program.model.lang.Register;
-import ghidra.program.model.listing.*;
+import ghidra.program.model.listing.BookmarkManager;
+import ghidra.program.model.listing.BookmarkType;
+import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.ProgramContext;
 import ghidra.program.model.mem.Memory;
 import ghidra.util.exception.CancelledException;
 import org.jetbrains.annotations.NotNull;
@@ -41,8 +44,7 @@ public class SyncDsd extends GhidraScript {
     }
 
     @Override
-    protected void run()
-    throws Exception {
+    protected void run() throws Exception {
         Memory memory = currentProgram.getMemory();
         ProgramContext programContext = currentProgram.getProgramContext();
         this.thumbRegister = programContext.getRegister("TMode");
@@ -50,7 +52,11 @@ public class SyncDsd extends GhidraScript {
 
         loadProperties();
 
-        DsdConfigChooser dsdConfigChooser = new DsdConfigChooser(null, "Begin sync", this.properties);
+        DsdConfigChooser dsdConfigChooser = new DsdConfigChooser(
+            null,
+            "Begin sync",
+            this.properties
+        );
         File file = dsdConfigChooser.getSelectedFile();
         dsdConfigChooser.dispose();
         if (dsdConfigChooser.wasCancelled()) {
@@ -103,13 +109,15 @@ public class SyncDsd extends GhidraScript {
         }
     }
 
-    private void saveProperties()
-    throws IOException {
+    private void saveProperties() throws IOException {
         File propertiesFile = getPropertiesFile();
-        this.properties.store(new FileOutputStream(propertiesFile), "Properties for the SyncDsd.java script");
+        this.properties.store(
+            new FileOutputStream(propertiesFile),
+            "Properties for the SyncDsd.java script"
+        );
     }
 
-    private void doSync(DsdSyncData dsdSyncData) {
+    private void doSync(DsdSyncData dsdSyncData) throws DsSection.Exception, DsModules.Exception {
         if (!dryRun) {
             this.removeBookmarks();
         }
@@ -135,10 +143,7 @@ public class SyncDsd extends GhidraScript {
         for (DsdSyncOverlay overlay : dsdSyncData.getArm9Overlays()) {
             DsModule dsModule = dsModules.getOverlay(overlay.id);
             if (dsModule == null) {
-                printerr(String.format(
-                    "No memory blocks for overlay %d",
-                    overlay.id
-                ));
+                printerr(String.format("No memory blocks for overlay %d", overlay.id));
                 return;
             }
             this.syncModule(overlay.module, dsModule);
@@ -158,14 +163,15 @@ public class SyncDsd extends GhidraScript {
         }
     }
 
-    private void syncModule(DsdSyncModule dsdSyncModule, @NotNull DsModule dsModule) {
+    private void syncModule(DsdSyncModule dsdSyncModule, @NotNull DsModule dsModule)
+        throws DsSection.Exception, DsModules.Exception {
         try {
             this.updateModule(dsdSyncModule, dsModule);
         } catch (Exception e) {
             printerr(String.format(
                 "Failed to update module %s, see error:\n%s",
                 dsModule.name,
-                e
+                getExceptionStackTrace(e)
             ));
             return;
         }
@@ -211,7 +217,7 @@ public class SyncDsd extends GhidraScript {
                     printerr(String.format(
                         "Failed to join module %s, see error:\n%s",
                         dsModule.name,
-                        e
+                        getExceptionStackTrace(e)
                     ));
                     return;
                 }
@@ -221,7 +227,7 @@ public class SyncDsd extends GhidraScript {
                     printerr(String.format(
                         "Failed to split module %s, see error:\n%s",
                         dsModule.name,
-                        e
+                        getExceptionStackTrace(e)
                     ));
                     return;
                 }
@@ -263,7 +269,7 @@ public class SyncDsd extends GhidraScript {
                 function.name.getString(),
                 function.start,
                 dsSection.getModule().name,
-                e
+                getExceptionStackTrace(e)
             ));
             return;
         }
@@ -282,7 +288,7 @@ public class SyncDsd extends GhidraScript {
                         syncFunction.symbolName.name,
                         syncFunction.start,
                         dsSection.getModule().name,
-                        e
+                        getExceptionStackTrace(e)
                     ));
                     return;
                 }
@@ -298,7 +304,7 @@ public class SyncDsd extends GhidraScript {
                         ghidraFunction.getName(),
                         syncFunction.start,
                         dsSection.getModule().name,
-                        e
+                        getExceptionStackTrace(e)
                     ));
                     return;
                 }
@@ -314,7 +320,7 @@ public class SyncDsd extends GhidraScript {
                     ghidraFunction.getName(),
                     syncFunction.start,
                     dsSection.getModule().name,
-                    e
+                    getExceptionStackTrace(e)
                 ));
                 return;
             }
@@ -334,7 +340,7 @@ public class SyncDsd extends GhidraScript {
                 dataSymbol.address,
                 dsSection.getName(),
                 dsSection.getModule().name,
-                e
+                getExceptionStackTrace(e)
             ));
             return;
         }
@@ -348,8 +354,7 @@ public class SyncDsd extends GhidraScript {
                 if (!dryRun) {
                     syncDataSymbol.deleteExistingLabels();
                 }
-                println("Updating data " + currentName + " at " + syncDataSymbol.address + " to name " +
-                    syncDataSymbol.symbolName.symbol);
+                println("Updating data " + currentName + " at " + syncDataSymbol.address + " to name " + syncDataSymbol.symbolName.symbol);
             } else {
                 return;
             }
@@ -367,7 +372,7 @@ public class SyncDsd extends GhidraScript {
                     syncDataSymbol.address,
                     dsSection.getName(),
                     dsSection.getModule().name,
-                    e
+                    getExceptionStackTrace(e)
                 ));
             }
             syncDataSymbol.defineData(this);
@@ -384,13 +389,14 @@ public class SyncDsd extends GhidraScript {
                 relocation.from,
                 dsSection.getName(),
                 dsSection.getModule().name,
-                e
+                getExceptionStackTrace(e)
             ));
             return;
         }
 
-        if (syncRelocation.needsUpdate()) {
-            println("Updating references from " + syncRelocation.from);
+        String updateReason = syncRelocation.getUpdateReason();
+        if (updateReason != null) {
+            println("Updating references from " + syncRelocation.from + " : " + updateReason);
             if (!dryRun) {
                 syncRelocation.deleteExistingReferences();
             }
@@ -409,10 +415,16 @@ public class SyncDsd extends GhidraScript {
                     relocation.from,
                     dsSection.getName(),
                     dsSection.getModule().name,
-                    e
+                    getExceptionStackTrace(e)
                 ));
                 return;
             }
         }
+    }
+
+    public static String getExceptionStackTrace(Exception e) {
+        StringWriter writer = new StringWriter();
+        e.printStackTrace(new PrintWriter(writer));
+        return writer.toString();
     }
 }

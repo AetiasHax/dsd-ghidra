@@ -79,7 +79,7 @@ pub struct SafeDsdSyncDataSymbol {
 pub struct SafeDsdSyncRelocation {
     from: u32,
     to: u32,
-    kind: RelocationKind,
+    kind: DsdRelocationKind,
     module: DsdSyncRelocationModule,
     indices: Vec<u16>,
     conditional: bool,
@@ -91,17 +91,15 @@ impl SafeDsdConfigData {
         let config = Config::from_file(path)?;
         let config_path = path.parent().unwrap();
 
-        let rom = Rom::load(
-            config_path.join(&config.rom_config),
-            RomLoadOptions {
-                key: None,
-                compress: false,
-                encrypt: false,
-                load_files: false,
-                load_banner: false,
-                load_header: false,
-            },
-        )?;
+        let rom = Rom::load(config_path.join(&config.rom_config), RomLoadOptions {
+            key: None,
+            compress: false,
+            encrypt: false,
+            load_files: false,
+            load_banner: false,
+            load_header: false,
+            load_multiboot_signature: false,
+        })?;
 
         let arm9 = SafeDsdSyncModule::new(ModuleKind::Arm9, config_path, &config.main_module, rom.arm9().code()?, false)?;
         let rom_autoloads = rom.arm9().autoloads()?;
@@ -182,17 +180,14 @@ impl SafeDsdSyncModule {
         let delinks = Delinks::from_file(root_path.join(&config_module.delinks), module_kind)?;
         let relocs = Relocations::from_file(root_path.join(&config_module.relocations))?;
 
-        let module = Module::new(
-            &mut symbol_map,
-            ModuleOptions {
-                kind: module_kind,
-                name: config_module.name.clone(),
-                relocations: relocs,
-                sections: delinks.sections,
-                code,
-                signed,
-            },
-        )?;
+        let module = Module::new(&mut symbol_map, ModuleOptions {
+            kind: module_kind,
+            name: config_module.name.clone(),
+            relocations: relocs,
+            sections: delinks.sections,
+            code,
+            signed,
+        })?;
 
         let sections =
             module.sections().iter().map(|section| SafeDsdSyncSection::new(section, &module, &symbol_map)).collect::<Vec<_>>();
@@ -299,7 +294,7 @@ impl SafeDsdSyncSection {
             let mut iter = symbol_map
                 .iter_by_address(section.address_range())
                 .filter_map(
-                    |symbol| {
+                    |(_, symbol)| {
                         if let SymbolKind::Data(sym_data) = symbol.kind {
                             Some((sym_data, symbol))
                         } else {
@@ -321,7 +316,7 @@ impl SafeDsdSyncSection {
         } else {
             symbol_map
                 .iter_by_address(section.address_range())
-                .filter_map(|symbol| {
+                .filter_map(|(_, symbol)| {
                     if let SymbolKind::Bss(sym_bss) = symbol.kind {
                         Some(SafeDsdSyncDataSymbol {
                             name: demangle(&symbol.name),
@@ -340,6 +335,16 @@ impl SafeDsdSyncSection {
             .relocations()
             .iter_range(section.address_range())
             .map(|(_, relocation)| {
+                let reloc_kind = match relocation.kind() {
+                    RelocationKind::ArmCall => DsdRelocationKind::ArmCall,
+                    RelocationKind::ThumbCall => DsdRelocationKind::ThumbCall,
+                    RelocationKind::ArmCallThumb => DsdRelocationKind::ArmCallThumb,
+                    RelocationKind::ThumbCallArm => DsdRelocationKind::ThumbCallArm,
+                    RelocationKind::ArmBranch => DsdRelocationKind::ArmBranch,
+                    RelocationKind::Load => DsdRelocationKind::Load,
+                    RelocationKind::OverlayId => DsdRelocationKind::OverlayId,
+                    RelocationKind::LinkTimeConst(_) => DsdRelocationKind::LinkTimeConst,
+                };
                 let (reloc_module, indices) = match relocation.module() {
                     RelocationModule::None => (DsdSyncRelocationModule::None, vec![]),
                     RelocationModule::Overlay { id } => (DsdSyncRelocationModule::Overlays, vec![*id]),
@@ -360,11 +365,12 @@ impl SafeDsdSyncSection {
                     }
                     RelocationKind::ThumbCall | RelocationKind::ThumbCallArm => false,
                     RelocationKind::Load | RelocationKind::OverlayId => false,
+                    RelocationKind::LinkTimeConst(_) => false,
                 };
                 SafeDsdSyncRelocation {
                     from: relocation.from_address(),
                     to: (relocation.to_address() as i32 + relocation.addend_value()) as u32,
-                    kind: relocation.kind(),
+                    kind: reloc_kind,
                     module: reloc_module,
                     indices,
                     conditional,
@@ -559,10 +565,23 @@ pub enum DsdSyncDataKind {
 pub struct DsdSyncRelocation {
     from: u32,
     to: u32,
-    kind: RelocationKind,
+    kind: DsdRelocationKind,
     module: DsdSyncRelocationModule,
     overlays: UnsafeList<u16>,
     conditional: Bool32,
+}
+
+#[repr(C)]
+#[derive(Clone)]
+pub enum DsdRelocationKind {
+    ArmCall,
+    ThumbCall,
+    ArmCallThumb,
+    ThumbCallArm,
+    ArmBranch,
+    Load,
+    OverlayId,
+    LinkTimeConst,
 }
 
 #[repr(C)]

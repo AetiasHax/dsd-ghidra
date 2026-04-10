@@ -11,14 +11,14 @@ import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.util.CodeUnitInsertionException;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class SyncRelocation {
     public final @NotNull DsdSyncRelocation dsdRelocation;
     public final @NotNull Address from;
     private final @NotNull Program program;
 
-    public SyncRelocation(
-        @NotNull Program program,
+    public SyncRelocation(@NotNull Program program,
         @NotNull DsSection dsSection,
         @NotNull DsdSyncRelocation dsdRelocation
     ) throws DsSection.Exception {
@@ -29,22 +29,42 @@ public class SyncRelocation {
         this.program = program;
     }
 
-    public boolean needsUpdate() {
+    public @Nullable String getUpdateReason() {
         ReferenceManager referenceManager = program.getReferenceManager();
         Reference[] references = referenceManager.getReferencesFrom(from);
 
+        switch (dsdRelocation.getKind()) {
+            case ArmCall, ThumbCall, ArmCallThumb, ThumbCallArm, ArmBranch, Load -> {
+            }
+            case OverlayId, LinkTimeConst -> {
+                // Only used for linking, not relevant for Ghidra projects
+                return null;
+            }
+        }
+
         switch (dsdRelocation.getModule()) {
             case None -> {
-                return references.length > 0;
+                if (references.length > 0) {
+                    return "There are references at this address but the relocation points to no module";
+                }
+                return null;
             }
             case Overlays -> {
-                if (dsdRelocation.indices.len != references.length) {
-                    return true;
+                if (references.length != dsdRelocation.indices.len) {
+                    return String.format(
+                        "Currently has %d overlay relocations but should be %d",
+                        references.length,
+                        dsdRelocation.indices.len
+                    );
                 }
                 short[] overlays = dsdRelocation.indices.getArray();
                 for (Reference reference : references) {
                     if (reference.getToAddress().getOffset() != dsdRelocation.to) {
-                        return true;
+                        return String.format(
+                            "An overlay reference points to %08x but should be %08x",
+                            reference.getToAddress().getOffset(),
+                            dsdRelocation.to
+                        );
                     }
 
                     String addressSpaceName = reference.getToAddress().getAddressSpace().getName();
@@ -57,51 +77,104 @@ public class SyncRelocation {
                         }
                     }
                     if (!found) {
-                        return true;
+                        return "One or more overlays are missing from the reference list";
                     }
                 }
-                return false;
+                return null;
             }
             case Main -> {
                 if (references.length != 1) {
-                    return true;
+                    return String.format(
+                        "Currently has %d main module relocations but should be 1",
+                        references.length
+                    );
                 }
                 if (references[0].getToAddress().getOffset() != dsdRelocation.to) {
-                    return true;
+                    return String.format(
+                        "This main module reference points to %08x but should be %08x",
+                        references[0].getToAddress().getOffset(),
+                        dsdRelocation.to
+                    );
                 }
                 String addressSpaceName = references[0].getToAddress().getAddressSpace().getName();
-                return isMain(addressSpaceName);
+                if (!isMain(addressSpaceName)) {
+                    return String.format(
+                        "This reference points to %s but should point to the main module",
+                        addressSpaceName
+                    );
+                }
+                return null;
             }
             case Itcm -> {
                 if (references.length != 1) {
-                    return true;
+                    return String.format(
+                        "Currently has %d ITCM relocations but should be 1",
+                        references.length
+                    );
                 }
                 if (references[0].getToAddress().getOffset() != dsdRelocation.to) {
-                    return true;
+                    return String.format(
+                        "This ITCM reference points to %08x but should be %08x",
+                        references[0].getToAddress().getOffset(),
+                        dsdRelocation.to
+                    );
                 }
                 String addressSpaceName = references[0].getToAddress().getAddressSpace().getName();
-                return isItcm(addressSpaceName);
+                if (!isItcm(addressSpaceName)) {
+                    return String.format(
+                        "This reference points to %s but should point to the ITCM",
+                        addressSpaceName
+                    );
+                }
+                return null;
             }
             case Dtcm -> {
                 if (references.length != 1) {
-                    return true;
+                    return String.format(
+                        "Currently has %d DTCM relocations but should be 1",
+                        references.length
+                    );
                 }
                 if (references[0].getToAddress().getOffset() != dsdRelocation.to) {
-                    return true;
+                    return String.format(
+                        "This DTCM reference points to %08x but should be %08x",
+                        references[0].getToAddress().getOffset(),
+                        dsdRelocation.to
+                    );
                 }
                 String addressSpaceName = references[0].getToAddress().getAddressSpace().getName();
-                return isDtcm(addressSpaceName);
+                if (!isDtcm(addressSpaceName)) {
+                    return String.format(
+                        "This reference points to %s but should point to the DTCM",
+                        addressSpaceName
+                    );
+                }
+                return null;
             }
             case Autoload -> {
                 if (references.length != 1) {
-                    return true;
+                    return String.format(
+                        "Currently has %d autoload relocations but should be 1",
+                        references.length
+                    );
                 }
                 if (references[0].getToAddress().getOffset() != dsdRelocation.to) {
-                    return true;
+                    return String.format(
+                        "This autoload reference points to %08x but should be %08x",
+                        references[0].getToAddress().getOffset(),
+                        dsdRelocation.to
+                    );
                 }
                 String addressSpaceName = references[0].getToAddress().getAddressSpace().getName();
                 int autoloadIndex = dsdRelocation.indices.getArray()[0];
-                return parseAutoloadIndex(addressSpaceName) == autoloadIndex;
+                if (parseAutoloadIndex(addressSpaceName) != autoloadIndex) {
+                    return String.format(
+                        "This reference points to %s but should point to autoload %d",
+                        addressSpaceName,
+                        autoloadIndex
+                    );
+                }
+                return null;
             }
         }
         throw new MatchException("Unknown relocation type", null);
@@ -117,7 +190,8 @@ public class SyncRelocation {
         referenceManager.removeAllReferencesFrom(from);
     }
 
-    public void addReferences(@NotNull FlatProgramAPI api, @NotNull DsModules dsModules) throws DsSection.Exception, DsModules.Exception {
+    public void addReferences(@NotNull FlatProgramAPI api, @NotNull DsModules dsModules)
+        throws DsSection.Exception, DsModules.Exception {
         switch (dsdRelocation.getModule()) {
             case None -> {
             }
@@ -139,8 +213,7 @@ public class SyncRelocation {
         }
     }
 
-    private void addReference(
-        @NotNull FlatProgramAPI api,
+    private void addReference(@NotNull FlatProgramAPI api,
         @NotNull DsModule toModule,
         boolean primary
     ) throws DsSection.Exception {
@@ -152,7 +225,13 @@ public class SyncRelocation {
 
         RefType refType = dsdRelocation.getKind().getRefType(dsdRelocation.conditional);
 
-        Reference reference = referenceManager.addMemoryReference(from, to, refType, SourceType.USER_DEFINED, 0);
+        Reference reference = referenceManager.addMemoryReference(
+            from,
+            to,
+            refType,
+            SourceType.USER_DEFINED,
+            0
+        );
         referenceManager.setPrimary(reference, primary);
 
         try {
@@ -162,22 +241,19 @@ public class SyncRelocation {
     }
 
     private static boolean isMain(@NotNull String addressSpaceName) {
-        return addressSpaceName.equals("arm9_main") ||
-            addressSpaceName.equals("arm9_main.bss") ||
-            addressSpaceName.equals("ARM9_Main_Memory") ||
-            addressSpaceName.equals("ARM9_Main_Memory.bss");
+        return addressSpaceName.equals("ram") || addressSpaceName.equals("arm9_main") || addressSpaceName.equals(
+            "arm9_main.bss") || addressSpaceName.equals("ARM9_Main_Memory") || addressSpaceName.equals(
+            "ARM9_Main_Memory.bss");
     }
 
     private static boolean isItcm(@NotNull String addressSpaceName) {
-        return addressSpaceName.equals("itcm") ||
-            addressSpaceName.equals("ITCM");
+        return addressSpaceName.equals("ram") || addressSpaceName.equals("itcm") || addressSpaceName.equals(
+            "ITCM");
     }
 
     private static boolean isDtcm(@NotNull String addressSpaceName) {
-        return addressSpaceName.equals("dtcm") ||
-            addressSpaceName.equals("dtcm.bss") ||
-            addressSpaceName.equals("DTCM") ||
-            addressSpaceName.equals("DTCM.bss");
+        return addressSpaceName.equals("ram") || addressSpaceName.equals("dtcm") || addressSpaceName.equals(
+            "dtcm.bss") || addressSpaceName.equals("DTCM") || addressSpaceName.equals("DTCM.bss");
     }
 
     private static int parseAutoloadIndex(@NotNull String blockName) {
