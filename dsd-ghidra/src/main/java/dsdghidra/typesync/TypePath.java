@@ -2,8 +2,10 @@ package dsdghidra.typesync;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static dsdghidra.typesync.TypesyncUtil.*;
 
@@ -92,5 +94,22 @@ public record TypePath(String[] namespaces, String name, TypeKind[] templateArgu
             sb.append('>');
         }
         return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
+        TypePath path = (TypePath) object;
+        return Objects.equals(name, path.name) && Objects.deepEquals(
+            namespaces,
+            path.namespaces
+        ) && Objects.deepEquals(templateArguments, path.templateArguments);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(Arrays.hashCode(namespaces), name, Arrays.hashCode(templateArguments));
     }
 }
