@@ -78,18 +78,10 @@ public record TypePath(String[] namespaces, String name, TypeKind[] templateArgu
         if (templateArguments.length > 0) {
             sb.append('<');
             for (int i = 0; i < templateArguments.length; ++i) {
-                TypeKind templateArgument = templateArguments[i];
-                String name;
-                try {
-                    name = templateArgument.getName();
-                } catch (Types.NoNameException e) {
-                    name = "?";
-                }
-
-                if (i != 0) {
+                if (i > 0) {
                     sb.append(", ");
                 }
-                sb.append(name);
+                sb.append(templateArguments[i].getDisplayName());
             }
             sb.append('>');
         }
@@ -105,7 +97,10 @@ public record TypePath(String[] namespaces, String name, TypeKind[] templateArgu
         return Objects.equals(name, path.name) && Objects.deepEquals(
             namespaces,
             path.namespaces
-        ) && Objects.deepEquals(templateArguments, path.templateArguments);
+        ) && Objects.deepEquals(
+            templateArguments,
+            path.templateArguments
+        );
     }
 
     @Override

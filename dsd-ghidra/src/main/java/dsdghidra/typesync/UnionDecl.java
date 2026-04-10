@@ -21,6 +21,15 @@ public record UnionDecl(@Nullable TypePath path, Field[] fields, long size, long
         return path.toString();
     }
 
+    @Override
+    public @NotNull String getDisplayName() {
+        if (path == null) {
+            return "anonymous union";
+        } else {
+            return path.toString();
+        }
+    }
+
     /**
      * @param root Data to parse.
      * @return A {@link UnionDecl}.

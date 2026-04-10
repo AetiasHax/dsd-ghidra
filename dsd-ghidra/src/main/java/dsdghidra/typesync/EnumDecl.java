@@ -21,6 +21,15 @@ public record EnumDecl(@Nullable TypePath path, EnumConstant[] constants, long s
         return path.toString();
     }
 
+    @Override
+    public @NotNull String getDisplayName() {
+        if (path == null) {
+            return "anonymous enum";
+        } else {
+            return path.toString();
+        }
+    }
+
     /**
      * @param root Data to parse.
      * @return an {@link EnumDecl}.

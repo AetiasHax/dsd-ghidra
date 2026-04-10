@@ -11,6 +11,11 @@ public record NamedType(TypePath typePath) implements TypeKind {
         throw new Types.NoNameException("Named types do not have names themselves");
     }
 
+    @Override
+    public @NotNull String getDisplayName() {
+        return typePath.toString();
+    }
+
     /**
      * @param root Data to parse.
      * @return a {@link NamedType} instance.

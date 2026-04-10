@@ -17,6 +17,12 @@ public sealed interface TypeKind
     @NotNull String getName() throws Types.NoNameException;
 
     /**
+     * @return The display name for this type, used for uniquifying names of specialized template
+     * classes. Types which may return null in {@link #getName} may return non-null here.
+     */
+    @NotNull String getDisplayName();
+
+    /**
      * @param root Node containing one key (path of type kind).
      * @return a {@link TypeKind}.
      * @throws Types.ParseException if `root` contains invalid data.

@@ -27,6 +27,15 @@ public record StructDecl(
         return path.toString();
     }
 
+    @Override
+    public @NotNull String getDisplayName() {
+        if (path == null) {
+            return "anonymous struct";
+        } else {
+            return path.toString();
+        }
+    }
+
     /**
      * @param root Data to parse.
      * @return a {@link StructDecl}.

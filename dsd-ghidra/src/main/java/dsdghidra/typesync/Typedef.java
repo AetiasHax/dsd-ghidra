@@ -16,6 +16,11 @@ public record Typedef(
         return path.toString();
     }
 
+    @Override
+    public @NotNull String getDisplayName() {
+        return path.toString();
+    }
+
     /**
      * @param root Data to parse.
      * @return a {@link Typedef} instance.

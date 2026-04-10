@@ -16,6 +16,21 @@ public record FunctionType(TypeKind returnType, TypeKind[] parameters) implement
         throw new Types.NoNameException("Function types cannot have names");
     }
 
+    @Override
+    public @NotNull String getDisplayName() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(returnType);
+        sb.append(" fn(");
+        for (int i = 0; i < parameters.length; ++i) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(parameters[i]);
+        }
+        sb.append(")");
+        return sb.toString();
+    }
+
     /**
      * @param root Data to parse.
      * @return a {@link FunctionType}.

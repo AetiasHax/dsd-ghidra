@@ -14,6 +14,15 @@ public record ArrayType(TypeKind elementType, long size) implements TypeKind {
         throw new Types.NoNameException("Arrays cannot have names");
     }
 
+    @Override
+    public @NotNull String getDisplayName() {
+        if (size < 0) {
+            return elementType.getDisplayName() + "[]";
+        } else {
+            return elementType.getDisplayName() + "[" + size + "]";
+        }
+    }
+
     /**
      * @param root Data to parse.
      * @return an {@link ArrayType} instance.

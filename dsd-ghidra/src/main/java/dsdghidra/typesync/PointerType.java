@@ -13,6 +13,11 @@ public record PointerType(TypeKind pointeeType) implements TypeKind {
         throw new Types.NoNameException("Pointer types cannot have names");
     }
 
+    @Override
+    public @NotNull String getDisplayName() {
+        return pointeeType.getDisplayName() + "*";
+    }
+
     /**
      * @param root Data to parse.
      * @return a {@link PointerType} instance.
