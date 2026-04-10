@@ -3,8 +3,10 @@ package dsdghidra.typesync;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static dsdghidra.typesync.TypesyncUtil.*;
 
@@ -123,5 +125,31 @@ public record StructDecl(
             }
         }
         return true;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
+        StructDecl that = (StructDecl) object;
+        return size == that.size && alignment == that.alignment && isVirtual == that.isVirtual && Objects.equals(path,
+            that.path
+        ) && Objects.deepEquals(baseTypes, that.baseTypes) && Objects.deepEquals(
+            fields,
+            that.fields
+        );
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+            path,
+            Arrays.hashCode(baseTypes),
+            Arrays.hashCode(fields),
+            size,
+            alignment,
+            isVirtual
+        );
     }
 }

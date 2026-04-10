@@ -3,8 +3,10 @@ package dsdghidra.typesync;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static dsdghidra.typesync.TypesyncUtil.*;
 
@@ -64,5 +66,22 @@ public record UnionDecl(@Nullable TypePath path, Field[] fields, long size, long
         }
 
         return new UnionDecl(path, fields, size, alignment);
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
+        UnionDecl unionDecl = (UnionDecl) object;
+        return size == unionDecl.size && alignment == unionDecl.alignment && Objects.equals(
+            path,
+            unionDecl.path
+        ) && Objects.deepEquals(fields, unionDecl.fields);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(path, Arrays.hashCode(fields), size, alignment);
     }
 }

@@ -2,6 +2,8 @@ package dsdghidra.typesync;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Objects;
+
 public record PrimitiveType(String ghidraTypeName) implements TypeKind {
     public static final PrimitiveType USIZE = new PrimitiveType("uint");
     public static final PrimitiveType SSIZE = new PrimitiveType("int");
@@ -23,5 +25,19 @@ public record PrimitiveType(String ghidraTypeName) implements TypeKind {
     @Override
     public @NotNull String getName() throws Types.NoNameException {
         throw new Types.NoNameException("Primitive types do not have names themselves");
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
+        PrimitiveType that = (PrimitiveType) object;
+        return Objects.equals(ghidraTypeName, that.ghidraTypeName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(ghidraTypeName);
     }
 }

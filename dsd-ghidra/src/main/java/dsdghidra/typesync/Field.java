@@ -3,6 +3,7 @@ package dsdghidra.typesync;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.Objects;
 
 import static dsdghidra.typesync.TypesyncUtil.*;
 
@@ -70,5 +71,21 @@ public record Field(
         }
 
         return new Field(name, kind, isConstant, isVolatile, bitFieldWidth);
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
+        Field field = (Field) object;
+        return isConstant == field.isConstant && isVolatile == field.isVolatile && bitFieldWidth == field.bitFieldWidth && Objects.equals(name,
+            field.name
+        ) && Objects.equals(kind, field.kind);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, kind, isConstant, isVolatile, bitFieldWidth);
     }
 }

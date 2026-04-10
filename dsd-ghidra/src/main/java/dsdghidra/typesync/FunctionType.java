@@ -2,8 +2,10 @@ package dsdghidra.typesync;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static dsdghidra.typesync.TypesyncUtil.expectArray;
 import static dsdghidra.typesync.TypesyncUtil.expectKey;
@@ -48,5 +50,22 @@ public record FunctionType(TypeKind returnType, TypeKind[] parameters) implement
         }
 
         return new FunctionType(returnType, parameters);
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
+        FunctionType that = (FunctionType) object;
+        return Objects.equals(returnType, that.returnType) && Objects.deepEquals(
+            parameters,
+            that.parameters
+        );
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(returnType, Arrays.hashCode(parameters));
     }
 }

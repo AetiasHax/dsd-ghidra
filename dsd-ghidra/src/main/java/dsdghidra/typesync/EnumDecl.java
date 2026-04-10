@@ -3,8 +3,10 @@ package dsdghidra.typesync;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static dsdghidra.typesync.TypesyncUtil.*;
 
@@ -92,5 +94,21 @@ public record EnumDecl(@Nullable TypePath path, EnumConstant[] constants, long s
 
             return new EnumConstant(name, value);
         }
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
+        EnumDecl enumDecl = (EnumDecl) object;
+        return size == enumDecl.size && Objects.equals(path, enumDecl.path) && Objects.deepEquals(constants,
+            enumDecl.constants
+        );
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(path, Arrays.hashCode(constants), size);
     }
 }

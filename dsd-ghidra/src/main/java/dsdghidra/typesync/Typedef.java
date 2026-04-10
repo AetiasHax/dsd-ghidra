@@ -3,6 +3,7 @@ package dsdghidra.typesync;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
+import java.util.Objects;
 
 import static dsdghidra.typesync.TypesyncUtil.*;
 
@@ -56,5 +57,21 @@ public record Typedef(
         }
 
         return new Typedef(path, underlyingType, isConstant, isVolatile);
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
+        Typedef typedef = (Typedef) object;
+        return isConstant == typedef.isConstant && isVolatile == typedef.isVolatile && Objects.equals(path,
+            typedef.path
+        ) && Objects.equals(underlyingType, typedef.underlyingType);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(path, underlyingType, isConstant, isVolatile);
     }
 }

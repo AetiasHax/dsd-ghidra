@@ -3,6 +3,7 @@ package dsdghidra.typesync;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
+import java.util.Objects;
 
 import static dsdghidra.typesync.TypesyncUtil.expectKey;
 import static dsdghidra.typesync.TypesyncUtil.expectLong;
@@ -36,5 +37,19 @@ public record ArrayType(TypeKind elementType, long size) implements TypeKind {
         }
 
         return new ArrayType(elementType, size);
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) {
+            return false;
+        }
+        ArrayType arrayType = (ArrayType) object;
+        return size == arrayType.size && Objects.equals(elementType, arrayType.elementType);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(elementType, size);
     }
 }
