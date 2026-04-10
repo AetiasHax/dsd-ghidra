@@ -111,4 +111,17 @@ public record StructDecl(
 
         return new StructDecl(path, baseTypes, fields, size, alignment, isVirtual);
     }
+
+    public boolean isEmpty(Types types) {
+        if (fields.length > 0) {
+            return false;
+        }
+        for (TypePath baseTypePath : baseTypes) {
+            TypeKind baseType = types.get(baseTypePath);
+            if (baseType instanceof StructDecl base && !base.isEmpty(types)) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

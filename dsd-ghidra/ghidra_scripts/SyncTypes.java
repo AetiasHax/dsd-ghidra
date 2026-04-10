@@ -203,6 +203,12 @@ public class SyncTypes extends DsdGhidraScript {
             TypePath baseTypePath = baseTypes[i];
             TypeKind baseType = this.types.get(baseTypePath);
             assert baseType != null;
+
+            if (baseType instanceof StructDecl base && base.isEmpty(types)) {
+                // Ignore empty base types
+                continue;
+            }
+
             DataType baseDataType;
             try {
                 baseDataType = this.updateType(baseType);
@@ -214,9 +220,6 @@ public class SyncTypes extends DsdGhidraScript {
                         struct.path()
                     ), e
                 );
-            }
-            if (baseDataType instanceof StructDecl && ((StructDecl) baseDataType).fields().length == 0) {
-
             }
             String fieldName = baseTypes.length == 1 ? "base" : "base" + i;
             // TODO: Add the base struct's fields instead of the base struct itself, and create
