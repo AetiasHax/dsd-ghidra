@@ -192,26 +192,43 @@ public class SyncTypes extends DsdGhidraScript {
         return addTemporaryType(new TypedefDataType(CATEGORY_PATH, name, underlyingType));
     }
 
-    private @NotNull DataType addStructType(StructDecl type, String name) throws Exception {
+    private @NotNull DataType addStructType(StructDecl struct, String name) throws Exception {
         var structType = (Structure) addTemporaryType(new StructureDataType(
             CATEGORY_PATH,
             name,
             0
         ));
-        TypePath[] baseTypes = type.baseTypes();
+        TypePath[] baseTypes = struct.baseTypes();
         for (int i = 0; i < baseTypes.length; i++) {
             TypePath baseTypePath = baseTypes[i];
             TypeKind baseType = this.types.get(baseTypePath);
             assert baseType != null;
-            DataType baseDataType = this.updateType(baseType);
+            DataType baseDataType;
+            try {
+                baseDataType = this.updateType(baseType);
+            } catch (Exception e) {
+                throw new Exception(
+                    String.format(
+                        "Failed to update base struct %s for struct %s",
+                        baseTypePath,
+                        struct.path()
+                    ), e
+                );
+            }
+            if (baseDataType instanceof StructDecl && ((StructDecl) baseDataType).fields().length == 0) {
+
+            }
             String fieldName = baseTypes.length == 1 ? "base" : "base" + i;
-            // TODO: Add the base type's fields instead of the base type itself, and create
+            // TODO: Add the base struct's fields instead of the base struct itself, and create
             //       a struct for the vtable
             structType.add(baseDataType, fieldName, "");
         }
-        for (StructField field : type.fields()) {
+        for (StructField field : struct.fields()) {
             DataType fieldType = this.updateType(field.field().kind());
             int bitFieldWidth = field.field().bitFieldWidth();
+            while (structType.getLength() < field.offset() / 8) {
+                structType.add(DataType.DEFAULT);
+            }
             if (bitFieldWidth > 0) {
                 structType.addBitField(fieldType, bitFieldWidth, name, "");
             } else {
