@@ -214,14 +214,18 @@ public class SyncTypes extends DsdGhidraScript {
             0
         ));
         TypePath[] baseTypes = struct.baseTypes();
+        boolean baseIsVirtual = false;
         for (int i = 0; i < baseTypes.length; i++) {
             TypePath baseTypePath = baseTypes[i];
             TypeKind baseType = this.types.get(baseTypePath);
             assert baseType != null;
 
-            if (baseType instanceof StructDecl base && base.isEmpty(types)) {
-                // Ignore empty base types
-                continue;
+            if (baseType instanceof StructDecl base) {
+                baseIsVirtual |= base.isVirtual();
+                if (base.isEmpty(types)) {
+                    // Ignore empty base types
+                    continue;
+                }
             }
 
             DataType baseDataType;
@@ -240,6 +244,9 @@ public class SyncTypes extends DsdGhidraScript {
             // TODO: Add the base struct's fields instead of the base struct itself, and create
             //       a struct for the vtable
             structType.add(baseDataType, fieldName, "");
+        }
+        if (struct.isVirtual() && !baseIsVirtual) {
+            structType.insertAtOffset(0, new PointerDataType(), -1, "vtable", "");
         }
         for (StructField field : struct.fields()) {
             DataType fieldType = this.updateType(field.field().kind());

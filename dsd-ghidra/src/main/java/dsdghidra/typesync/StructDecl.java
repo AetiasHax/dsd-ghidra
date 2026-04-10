@@ -118,6 +118,9 @@ public record StructDecl(
         if (fields.length > 0) {
             return false;
         }
+        if (isVirtual) {
+            return false;
+        }
         for (TypePath baseTypePath : baseTypes) {
             TypeKind baseType = types.get(baseTypePath);
             if (baseType instanceof StructDecl base && !base.isEmpty(types)) {
