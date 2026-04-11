@@ -37,7 +37,6 @@ pub fn get_type_sync_yaml(options: SafeTypeSyncOptions) -> Result<String> {
         // If it is absolute, then it replaces `project_path` entirely
         let glob_as_path = options.project_path.join(&include_glob);
         let glob_str = glob_as_path.to_string_lossy();
-        println!("Adding include glob: {}", glob_str);
         let glob = Glob::new(&glob_str).context("Invalid glob pattern in `includes`")?;
         builder.add(glob);
     }
@@ -47,7 +46,6 @@ pub fn get_type_sync_yaml(options: SafeTypeSyncOptions) -> Result<String> {
     for file_glob in options.files {
         let glob_as_path = options.project_path.join(&file_glob);
         let glob_str = glob_as_path.to_string_lossy();
-        println!("Adding file glob: {}", glob_str);
         let glob = Glob::new(&glob_str).context("Invalid glob pattern in `files`")?;
         builder.add(glob);
     }
