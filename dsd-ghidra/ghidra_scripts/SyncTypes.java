@@ -54,18 +54,18 @@ public class SyncTypes extends DsdGhidraScript {
         this.saveProperties();
 
         TypeSyncOptions options = new TypeSyncOptions();
-        UnsafeString[] includeStrings = configResult
+        UnsafeString[] includesStrings = configResult
             .includes()
             .stream()
-            .map(file -> new UnsafeString(file.toString()))
+            .map(UnsafeString::new)
             .toArray(UnsafeString[]::new);
-        options.includes = new UnsafeList<>(includeStrings);
-        UnsafeString[] excludeStrings = configResult
-            .excludes()
+        options.includes = new UnsafeList<>(includesStrings);
+        UnsafeString[] filesStrings = configResult
+            .files()
             .stream()
-            .map(file -> new UnsafeString(file.toString()))
+            .map(UnsafeString::new)
             .toArray(UnsafeString[]::new);
-        options.excludes = new UnsafeList<>(excludeStrings);
+        options.excludes = new UnsafeList<>(filesStrings); // TODO: Change to files
         options.short_enums = configResult.shortEnums();
         options.signed_char = configResult.signedChar();
         UnsafeString data = new UnsafeString();
