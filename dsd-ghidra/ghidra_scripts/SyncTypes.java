@@ -10,6 +10,7 @@ import dialog.typesync.TypeSyncConfigDialog;
 import dsdghidra.DsdGhidra;
 import dsdghidra.types.UnsafeList;
 import dsdghidra.types.UnsafeString;
+import dsdghidra.types.UnsafeU8List;
 import dsdghidra.typesync.*;
 import dsdghidra.typesync.PointerType;
 import dsdghidra.util.DsdError;
@@ -54,6 +55,7 @@ public class SyncTypes extends DsdGhidraScript {
         this.saveProperties();
 
         TypeSyncOptions options = new TypeSyncOptions();
+        options.project_path = new UnsafeString(configResult.projectPath());
         UnsafeString[] includesStrings = configResult
             .includes()
             .stream()
@@ -65,7 +67,12 @@ public class SyncTypes extends DsdGhidraScript {
             .stream()
             .map(UnsafeString::new)
             .toArray(UnsafeString[]::new);
-        options.excludes = new UnsafeList<>(filesStrings); // TODO: Change to files
+        options.files = new UnsafeList<>(filesStrings);
+        byte[] languagesValues = new byte[configResult.languages().size()];
+        for (int i = 0; i < configResult.languages().size(); ++i) {
+            languagesValues[i] = (byte) configResult.languages().get(i).ordinal();
+        }
+        options.languages = new UnsafeU8List(languagesValues);
         options.short_enums = configResult.shortEnums();
         options.signed_char = configResult.signedChar();
         UnsafeString data = new UnsafeString();
