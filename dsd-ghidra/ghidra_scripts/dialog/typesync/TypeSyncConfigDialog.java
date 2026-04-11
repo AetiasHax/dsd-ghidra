@@ -69,8 +69,8 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
         );
 
         this.addWorkPanel(buildWorkPanel());
-        this.addCancelButton();
         this.addOKButton();
+        this.addCancelButton();
     }
 
     public record Result(
@@ -150,7 +150,36 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
         gbc.gridy = 0;
         gbc.anchor = GridBagConstraints.NORTHWEST;
 
+        gbc.weighty = 1.0;
         gbc.weightx = 1.0;
+
+        gbc.insets = NO_INSETS;
+        panel.add(this.buildClangOptionsPanel(), gbc);
+        gbc.gridx++;
+
+        gbc.weightx = 0.0;
+
+        gbc.insets = NO_INSETS;
+        panel.add(this.buildTypesyncOptionsPanel(), gbc);
+        gbc.gridx++;
+
+        return panel;
+    }
+
+    private JComponent buildClangOptionsPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createEtchedBorder(),
+            "Clang options"
+        ));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+
+        gbc.weightx = 1.0;
+
         gbc.insets = NO_INSETS;
         panel.add(this.shortEnumsCheckbox, gbc);
         gbc.gridy++;
@@ -158,6 +187,23 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
         gbc.insets = NO_INSETS;
         panel.add(this.signedCharCheckbox, gbc);
         gbc.gridy++;
+
+        return panel;
+    }
+
+    private JComponent buildTypesyncOptionsPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createEtchedBorder(),
+            "Typesync options"
+        ));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+
+        gbc.weightx = 1.0;
 
         gbc.insets = NO_INSETS;
         panel.add(this.dryRunCheckbox, gbc);
