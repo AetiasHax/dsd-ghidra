@@ -1,5 +1,6 @@
 package dialog.typesync;
 
+import dialog.HelpButton;
 import docking.DialogComponentProvider;
 import docking.DockingWindowManager;
 import dsdghidra.util.PropertiesUtil;
@@ -31,6 +32,7 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
     private static final Insets INSETS = new Insets(PAD, PAD, PAD, PAD);
     private static final Insets INSETS_EXCEPT_TOP = new Insets(0, PAD, PAD, PAD);
     private static final Insets INSETS_EXCEPT_LEFT = new Insets(PAD, 0, PAD, PAD);
+    private static final Insets INSETS_RIGHT_ONLY = new Insets(0, 0, 0, PAD);
     private static final Insets NO_INSETS = new Insets(0, 0, 0, 0);
 
     private final Properties properties;
@@ -50,6 +52,7 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
 
     public TypeSyncConfigDialog(Properties properties) {
         super("Type sync", true, false, true, false);
+        setPreferredSize(500, 500);
 
         this.properties = properties;
 
@@ -240,12 +243,26 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
 
         gbc.weightx = 1.0;
 
-        gbc.insets = NO_INSETS;
+        gbc.insets = INSETS_RIGHT_ONLY;
         panel.add(this.shortEnumsCheckbox, gbc);
         gbc.gridy++;
 
-        gbc.insets = NO_INSETS;
+        gbc.insets = INSETS_RIGHT_ONLY;
         panel.add(this.signedCharCheckbox, gbc);
+        gbc.gridy++;
+
+        gbc.insets = NO_INSETS;
+        panel.add(new HelpButton(
+            this.getComponent(), """
+            These options are passed to Clang via type-crawler. These are the underlying \
+            technologies used by typesync.
+            
+            "Short enums" sets the minimum enum size to 1 byte, only growing to 2, 4 or 8 bytes \
+            when necessary.
+            
+            "Signed char" marks the char type as signed by default.
+            """
+        ));
         gbc.gridy++;
 
         return panel;
@@ -265,18 +282,37 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
 
         gbc.weightx = 1.0;
 
-        gbc.insets = NO_INSETS;
+        gbc.insets = INSETS_RIGHT_ONLY;
         panel.add(this.dryRunCheckbox, gbc);
         gbc.gridy++;
 
-        gbc.insets = NO_INSETS;
+        gbc.insets = INSETS_RIGHT_ONLY;
         panel.add(this.deleteOldTypesCheckbox, gbc);
         gbc.gridy++;
 
         gbc.weighty = 1.0;
 
-        gbc.insets = NO_INSETS;
+        gbc.insets = INSETS_RIGHT_ONLY;
         panel.add(this.dumpYamlCheckbox, gbc);
+        gbc.gridy = 0;
+        gbc.gridx++;
+
+        gbc.insets = NO_INSETS;
+        panel.add(new HelpButton(
+            this.getComponent(), """
+            These options apply to typesync (this script).
+            
+            "Dry run" means types will be analyzed but no changes will be made to your Ghidra \
+            project.
+            
+            "Delete old types" deletes old types from prior typesync runs that are not present in \
+            this run. If you combine this with "Dry run" then you can see which types would have \
+            been removed.
+            
+            "Dump YAML" displays the YAML returned by type-crawler and is meant for debugging \
+            purposes.
+            """
+        ));
         gbc.gridy++;
 
         return panel;
@@ -300,12 +336,36 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
 
         gbc.insets = INSETS;
         gbc.fill = GridBagConstraints.BOTH;
-        panel.add(buildPathList("Include directories", this.includesTable), gbc);
+        panel.add(
+            buildPathList(
+                "Include directories", this.includesTable, """
+                    This is a list of include directories and files that your project uses. Each \
+                    line is a glob pattern, meaning you can write syntax like "libs/**/include". \
+                    Other supported syntax includes ?, *, **, {a,b}, [ab].
+                    """
+            ), gbc
+        );
         gbc.gridy++;
 
         gbc.insets = INSETS;
         gbc.fill = GridBagConstraints.BOTH;
-        panel.add(buildPathList("C/C++ files to sync types from", this.filesTable), gbc);
+        panel.add(
+            buildPathList(
+                "C/C++ files to sync types from", this.filesTable, """
+                    This table has two columns: glob pattern and language. Any file inside the \
+                    project directory that matches at least one glob pattern will be scanned for \
+                    types. You can write syntax like "include/**/*.{h,hpp}", other supported \
+                    syntax includes ?, *, **, {a,b}, [ab].
+                    
+                    The language column lets you decide which language to interpret the files as. \
+                    Clang detects language based on the file extension by default, so .h would be \
+                    C and not C++ for example.
+                    
+                    If a file matches many globs at once, the highest match decides the language \
+                    to interpret the file as.
+                    """
+            ), gbc
+        );
         gbc.gridy++;
 
         return panel;
@@ -343,10 +403,17 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
         panel.add(browseButton, gbc);
         gbc.gridx++;
 
+        panel.add(new HelpButton(
+            this.getComponent(), """
+            This is the root of the project to sync types from. Note that the entire file tree \
+            will be searched for C/C++ files, so be as narrow as possible for better performance.
+            """
+        ));
+
         return panel;
     }
 
-    private JComponent buildPathList(String title, JTable table) {
+    private JComponent buildPathList(String title, JTable table, String helpMessage) {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
 
@@ -357,7 +424,14 @@ public class TypeSyncConfigDialog extends DialogComponentProvider {
         gbc.insets = INSETS;
         JLabel titleLabel = new JLabel(title);
         panel.add(titleLabel, gbc);
+        gbc.gridx++;
+
+        gbc.insets = NO_INSETS;
+        gbc.anchor = GridBagConstraints.EAST;
+        panel.add(new HelpButton(this.getComponent(), helpMessage), gbc);
+        gbc.gridx = 0;
         gbc.gridy++;
+        gbc.anchor = GridBagConstraints.CENTER;
 
         gbc.insets = INSETS_EXCEPT_TOP;
         gbc.gridheight = GridBagConstraints.REMAINDER;
