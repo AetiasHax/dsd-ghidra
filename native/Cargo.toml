@@ -1,6 +1,6 @@
 [package]
 name = "dsd-ghidra"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 
 [lib]
@@ -9,8 +9,8 @@ crate-type = ["cdylib"]
 [dependencies]
 anyhow = "1.0"
 cpp_demangle = "0.4"
-ds-decomp = "0.10"
-ds-rom = "0.6"
+ds-decomp = "0.11"
+ds-rom = "0.7"
 exn-anyhow = "0.1"
 globset = "0.4"
 serde-saphyr = "0.0"
