@@ -1,0 +1,494 @@
+//Imports types from a C/C++ codebase into this Ghidra project.
+//@author Aetias
+//@category dsd
+//@keybinding
+//@menupath Analysis.Sync DSD
+//@toolbar typesync.png
+
+import dialog.DebugMessageDialog;
+import dialog.typesync.TypeSyncConfigDialog;
+import dsdghidra.DsdGhidra;
+import dsdghidra.types.UnsafeList;
+import dsdghidra.types.UnsafeString;
+import dsdghidra.types.UnsafeU8List;
+import dsdghidra.typesync.*;
+import dsdghidra.typesync.PointerType;
+import dsdghidra.util.DsdError;
+import ghidra.program.model.data.*;
+import ghidra.program.model.data.Enum;
+import org.jetbrains.annotations.NotNull;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@SuppressWarnings("unused")
+public class SyncTypes extends DsdGhidraScript {
+    private static final CategoryPath CATEGORY_PATH = CategoryPath.ROOT.extend("typesync");
+
+    private DataTypeManager dataTypeManager;
+    private Category category;
+
+    private List<String> updatingTypes;
+    private Map<String, @NotNull DataType> updatedTypes;
+    private boolean dryRun;
+    private boolean deleteOldTypes;
+    private DataTypeConflictHandler dataTypeConflictHandler;
+    private Types types;
+    private int anonymousTypeCount;
+    private Map<PointerPlaceholder, TypeKind> pointerPlaceholders;
+
+    @Override
+    protected void run() throws Exception {
+        this.dataTypeManager = this.currentProgram.getDataTypeManager();
+        this.category = this.dataTypeManager.createCategory(CATEGORY_PATH);
+        this.dataTypeConflictHandler = DataTypeConflictHandler.REPLACE_HANDLER;
+
+        this.loadProperties();
+
+        var configDialog = new TypeSyncConfigDialog(this.properties);
+        var configResult = configDialog.getResult();
+        if (configResult == null) {
+            return;
+        }
+
+        this.saveProperties();
+
+        TypeSyncOptions options = new TypeSyncOptions();
+        options.project_path = new UnsafeString(configResult.projectPath());
+        UnsafeString[] includesStrings = configResult
+            .includes()
+            .stream()
+            .map(UnsafeString::new)
+            .toArray(UnsafeString[]::new);
+        options.includes = new UnsafeList<>(includesStrings);
+        UnsafeString[] filesStrings = configResult
+            .files()
+            .stream()
+            .map(UnsafeString::new)
+            .toArray(UnsafeString[]::new);
+        options.files = new UnsafeList<>(filesStrings);
+        byte[] languagesValues = new byte[configResult.languages().size()];
+        for (int i = 0; i < configResult.languages().size(); ++i) {
+            languagesValues[i] = (byte) configResult.languages().get(i).ordinal();
+        }
+        options.languages = new UnsafeU8List(languagesValues);
+        options.short_enums = configResult.shortEnums();
+        options.signed_char = configResult.signedChar();
+        UnsafeString data = new UnsafeString();
+        DsdError dsdError = new DsdError();
+        if (!DsdGhidra.INSTANCE.get_type_sync_data(options, data, dsdError.memory)) {
+            String errorMessage = "Failed to get type sync data from dsd-ghidra:\n\n" + dsdError.getString() + "\n";
+            DsdGhidra.INSTANCE.free_error(dsdError.memory);
+            throw new IOException(errorMessage);
+        }
+        String typeDataYaml = data.getString();
+        if (configResult.dumpYaml()) {
+            new DebugMessageDialog("Type YAML dump", typeDataYaml).show();
+        }
+
+        this.dryRun = configResult.dryRun();
+        this.deleteOldTypes = configResult.deleteOldTypes();
+
+        try {
+            this.doSync(typeDataYaml);
+        } finally {
+            if (!DsdGhidra.INSTANCE.free_type_sync_data(data, dsdError.memory)) {
+                this.printerr("Failed to free type sync data from dsd-ghidra:\n" + dsdError.getString());
+            }
+            DsdGhidra.INSTANCE.free_error(dsdError.memory);
+        }
+
+        if (dryRun) {
+            println("Dry run completed, no changes were made");
+        }
+    }
+
+    private void doSync(String yaml) throws Exception {
+        this.types = Types.parseYaml(yaml);
+
+        this.updatingTypes = new ArrayList<>();
+        this.updatedTypes = new HashMap<>();
+        this.anonymousTypeCount = 0;
+        this.pointerPlaceholders = new HashMap<>();
+
+        for (var entry : types) {
+            TypePath name = entry.getKey();
+            TypeKind type = entry.getValue();
+            this.updateType(type);
+        }
+
+        for (var placeholder : pointerPlaceholders.entrySet()) {
+            placeholder.getKey().resolve(placeholder.getValue());
+        }
+
+        if (this.deleteOldTypes) {
+            Set<String> knownTypePaths = this.updatedTypes
+                .values()
+                .stream()
+                .map(DataType::getPathName)
+                .collect(Collectors.toSet());
+            for (DataType dataType : this.category.getDataTypes()) {
+                if (dataType instanceof Pointer) {
+                    // Auto-generated by Ghidra
+                    continue;
+                }
+                if (knownTypePaths.contains(dataType.getPathName())) {
+                    // This type was found in this sync, keep it
+                    continue;
+                }
+
+                println("Deleting old type " + dataType.getPathName());
+                if (!dryRun) {
+                    this.category.remove(dataType, this.monitor);
+                }
+            }
+        }
+
+        this.pointerPlaceholders = null;
+        this.updatedTypes = null;
+        this.updatingTypes = null;
+        this.types = null;
+    }
+
+    private @NotNull DataType updateType(@NotNull TypeKind type)
+        throws CycleException, TypesyncException {
+        String name;
+        try {
+            name = type.getName();
+        } catch (Types.NoNameException e) {
+            name = "{anonymous" + anonymousTypeCount + "}";
+            anonymousTypeCount += 1;
+        }
+
+        if (updatingTypes.contains(name)) {
+            throw new CycleException("Cycle detected: " + String.join(
+                " -> ",
+                updatingTypes
+            ) + " -> " + name);
+        }
+
+        DataType cachedType = updatedTypes.get(name);
+        if (cachedType != null) {
+            return cachedType;
+        }
+
+        updatingTypes.add(name);
+        try {
+            DataType newType = switch (type) {
+                case ArrayType arrayType -> addArrayType(arrayType);
+                case EnumDecl enumDecl -> addEnumType(enumDecl, name);
+                case FunctionType functionType -> addFunctionType(functionType, name);
+                case NamedType namedType -> addNamedType(namedType);
+                case PointerType pointerType -> addPointerType(pointerType);
+                case StructDecl structDecl -> addStructType(structDecl, name);
+                case Typedef typedef -> addTypedef(typedef, name);
+                case UnionDecl unionDecl -> addUnionType(unionDecl, name);
+                case PrimitiveType primitiveType -> {
+                    DataType dataType = this.dataTypeManager.getDataType("/" + primitiveType.ghidraTypeName());
+                    if (dataType == null) {
+                        throw new TypesyncException("Primitive type not found" + primitiveType.ghidraTypeName());
+                    }
+                    yield dataType;
+                }
+            };
+
+            this.updatedTypes.put(name, newType);
+            return newType;
+        } finally {
+            updatingTypes.remove(name);
+        }
+    }
+
+    private @NotNull DataType addUnionType(UnionDecl type, String name)
+        throws CycleException, TypesyncException {
+        var unionType = (Union) addType(new UnionDataType(CATEGORY_PATH, name));
+        for (Field field : type.fields()) {
+            DataType fieldType = this.updateType(field.kind());
+            int bitFieldWidth = field.bitFieldWidth();
+            DataTypeComponent component;
+            if (bitFieldWidth > 0) {
+                try {
+                    component = unionType.addBitField(fieldType, bitFieldWidth, field.name(), "");
+                } catch (InvalidDataTypeException e) {
+                    throw new TypesyncException("Invalid data type for bit field", e);
+                }
+            } else {
+                component = unionType.add(fieldType, field.name(), "");
+            }
+            if (fieldType instanceof Pointer pointer && pointer.getDataType() == null) {
+                this.pointerPlaceholders.put(
+                    new UnionPointerField(
+                        this,
+                        unionType,
+                        component.getOrdinal()
+                    ), field.kind()
+                );
+            }
+        }
+        return unionType;
+    }
+
+    private @NotNull DataType addTypedef(Typedef type, String name)
+        throws CycleException, TypesyncException {
+        DataType underlyingType = this.updateType(type.underlyingType());
+        return addType(new TypedefDataType(CATEGORY_PATH, name, underlyingType));
+    }
+
+    private @NotNull DataType addStructType(StructDecl struct, String name)
+        throws CycleException, TypesyncException {
+        var structType = (Structure) addType(new StructureDataType(CATEGORY_PATH, name, 0));
+        TypePath[] baseTypes = struct.baseTypes();
+        boolean baseIsVirtual = false;
+        for (int i = 0; i < baseTypes.length; i++) {
+            TypePath baseTypePath = baseTypes[i];
+            TypeKind baseType = this.types.get(baseTypePath);
+            assert baseType != null;
+
+            if (baseType instanceof StructDecl base) {
+                baseIsVirtual |= base.isVirtual();
+                if (base.isEmpty(types)) {
+                    // Ignore empty base types
+                    continue;
+                }
+            }
+
+            DataType baseDataType;
+            try {
+                baseDataType = this.updateType(baseType);
+            } catch (Exception e) {
+                throw new TypesyncException(
+                    String.format(
+                        "Failed to update base struct %s for struct %s",
+                        baseTypePath,
+                        struct.path()
+                    ), e
+                );
+            }
+            String fieldName = baseTypes.length == 1 ? "base" : "base" + i;
+            // TODO: Add the base struct's fields instead of the base struct itself, and create
+            //       a struct for the vtable
+            structType.add(baseDataType, fieldName, "");
+        }
+        if (struct.isVirtual() && !baseIsVirtual) {
+            structType.insertAtOffset(0, new PointerDataType(), -1, "vtable", "");
+        }
+        for (StructField field : struct.fields()) {
+            DataType fieldType = this.updateType(field.field().kind());
+            int bitFieldWidth = field.field().bitFieldWidth();
+            while (structType.getLength() < field.offset() / 8) {
+                structType.add(DataType.DEFAULT);
+            }
+            DataTypeComponent component;
+            if (bitFieldWidth > 0) {
+                try {
+                    component = structType.addBitField(fieldType, bitFieldWidth, name, "");
+                } catch (InvalidDataTypeException e) {
+                    throw new TypesyncException("Invalid data type for bit field", e);
+                }
+            } else {
+                component = structType.add(fieldType, field.field().name(), "");
+            }
+            if (fieldType instanceof Pointer pointer && pointer.getDataType() == null) {
+                this.pointerPlaceholders.put(
+                    new StructPointerField(
+                        this,
+                        structType,
+                        component.getOrdinal()
+                    ),
+                    field.field().kind()
+                );
+            }
+        }
+        return structType;
+    }
+
+    private @NotNull DataType addPointerType(PointerType pointerType) throws TypesyncException {
+        try {
+            DataType dataType = this.updateType(pointerType.pointeeType());
+            return new PointerDataType(dataType);
+        } catch (CycleException e) {
+            // If this is used for a struct/union field, the pointee type will be resolved later
+            return new PointerDataType();
+        }
+    }
+
+    private @NotNull DataType addNamedType(NamedType type)
+        throws TypesyncException, CycleException {
+        TypeKind namedType = this.types.get(type.typePath());
+        if (namedType == null) {
+            throw new TypesyncException("Named type not found: " + type.typePath());
+        }
+        return this.updateType(namedType);
+    }
+
+    private @NotNull DataType addFunctionType(FunctionType type, String name)
+        throws CycleException, TypesyncException {
+        var functionType = (FunctionDefinition) addType(new FunctionDefinitionDataType(name));
+        DataType returnType = this.updateType(type.returnType());
+        functionType.setReturnType(returnType);
+        var parameters = type.parameters();
+        var arguments = new ParameterDefinitionImpl[parameters.length];
+        for (int i = 0; i < parameters.length; i++) {
+            var paramType = this.updateType(parameters[i]);
+            arguments[i] = new ParameterDefinitionImpl("param" + i, paramType, "");
+        }
+        functionType.setArguments(arguments);
+        return functionType;
+    }
+
+    private DataType addEnumType(EnumDecl type, String name) {
+        int length = (int) type.size();
+        var enumType = (Enum) addType(new EnumDataType(CATEGORY_PATH, name, length));
+        for (var constant : type.constants()) {
+            enumType.add(constant.name(), constant.value());
+        }
+        return enumType;
+    }
+
+    private DataType addArrayType(ArrayType type) throws CycleException, TypesyncException {
+        DataType elementType = this.updateType(type.elementType());
+        int numElements = (int) type.size();
+        if (numElements < 0) {
+            // unbounded array, set to length 0
+            numElements = 0;
+        }
+        return addType(new ArrayDataType(elementType, numElements));
+    }
+
+    private DataType addType(DataType dataType) {
+        if (this.dryRun) {
+            return dataType;
+        } else {
+            return this.category.addDataType(dataType, dataTypeConflictHandler);
+        }
+    }
+
+    private boolean isSameTypePath(DataType a, DataType b) {
+        return a.getCategoryPath().equals(b.getCategoryPath()) && a.getName().equals(b.getName());
+    }
+
+    private static class TypesyncException extends Exception {
+        public TypesyncException(String message) {
+            super(message);
+        }
+
+        public TypesyncException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    private static class CycleException extends Exception {
+        public CycleException(String message) {
+            super(message);
+        }
+
+        public CycleException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    private interface PointerPlaceholder {
+        void resolve(TypeKind typeKind);
+    }
+
+    private record StructPointerField(SyncTypes script, Structure structure, int ordinal)
+        implements PointerPlaceholder
+    {
+        @Override
+        public void resolve(TypeKind typeKind) {
+            DataTypeComponent component = structure.getComponent(ordinal);
+            script.println("Resolving pointer at struct field " + component.getFieldName() + " of " + structure.getPathName());
+
+            DataType dataType;
+            try {
+                dataType = script.updateType(typeKind);
+            } catch (CycleException | TypesyncException e) {
+                script.printerr(String.format(
+                    "Failed to resolve pointer type for struct field %s in %s, see error:\n%s",
+                    component.getFieldName(),
+                    structure.getPathName(),
+                    DsdGhidraScript.getExceptionStackTrace(e)
+                ));
+                return;
+            }
+
+            if (!script.dryRun) {
+                structure.replace(
+                    ordinal,
+                    new PointerDataType(dataType),
+                    component.getLength(),
+                    component.getFieldName(),
+                    component.getComment()
+                );
+            }
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (object == null || getClass() != object.getClass()) {
+                return false;
+            }
+            StructPointerField that = (StructPointerField) object;
+            return ordinal == that.ordinal && Objects.equals(
+                structure.getCategoryPath(),
+                that.structure.getCategoryPath()
+            );
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(structure.getCategoryPath(), ordinal);
+        }
+    }
+
+    private record UnionPointerField(SyncTypes script, Union union, int ordinal)
+        implements PointerPlaceholder
+    {
+        @Override
+        public void resolve(TypeKind typeKind) {
+            DataTypeComponent component = union.getComponent(ordinal);
+
+            DataType dataType;
+            try {
+                dataType = script.updateType(typeKind);
+            } catch (CycleException | TypesyncException e) {
+                script.printerr(String.format(
+                    "Failed to resolve pointer type for union field %s in %s, see error:\n%s",
+                    component.getFieldName(),
+                    union.getPathName(),
+                    DsdGhidraScript.getExceptionStackTrace(e)
+                ));
+                return;
+            }
+
+            if (!script.dryRun) {
+                union.delete(ordinal);
+                union.insert(
+                    ordinal,
+                    new PointerDataType(dataType),
+                    component.getLength(),
+                    component.getFieldName(),
+                    component.getComment()
+                );
+            }
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (object == null || getClass() != object.getClass()) {
+                return false;
+            }
+            UnionPointerField that = (UnionPointerField) object;
+            return ordinal == that.ordinal && Objects.equals(
+                union.getCategoryPath(),
+                that.union.getCategoryPath()
+            );
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(union.getCategoryPath(), ordinal);
+        }
+    }
+}

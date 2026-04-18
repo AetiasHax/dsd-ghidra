@@ -33,35 +33,34 @@
 def ghidraInstallDir
 
 if (System.env.GHIDRA_INSTALL_DIR) {
-	ghidraInstallDir = System.env.GHIDRA_INSTALL_DIR
-}
-else if (project.hasProperty("GHIDRA_INSTALL_DIR")) {
-	ghidraInstallDir = project.getProperty("GHIDRA_INSTALL_DIR")
-}
-else {
-	ghidraInstallDir = "<REPLACE>"
+    ghidraInstallDir = System.env.GHIDRA_INSTALL_DIR
+} else if (project.hasProperty("GHIDRA_INSTALL_DIR")) {
+    ghidraInstallDir = project.getProperty("GHIDRA_INSTALL_DIR")
+} else {
+    ghidraInstallDir = "<REPLACE>"
 }
 
 task distributeExtension {
-	group "Ghidra"
+    group "Ghidra"
 
-	apply from: new File(ghidraInstallDir).getCanonicalPath() + "/support/buildExtension.gradle"
-	dependsOn ':buildExtension'
+    apply from: new File(ghidraInstallDir).getCanonicalPath() + "/support/buildExtension.gradle"
+    dependsOn ':buildExtension'
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
 
 repositories {
-	// Declare dependency repositories here.  This is not needed if dependencies are manually 
-	// dropped into the lib/ directory.
-	// See https://docs.gradle.org/current/userguide/declaring_repositories.html for more info.
-	// Ex: mavenCentral()
-	mavenCentral()
+    // Declare dependency repositories here.  This is not needed if dependencies are manually
+    // dropped into the lib/ directory.
+    // See https://docs.gradle.org/current/userguide/declaring_repositories.html for more info.
+    // Ex: mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
-	// Any external dependencies added here will automatically be copied to the lib/ directory when
-	// this extension is built.
-	implementation 'org.jetbrains:annotations:24.0.0'
+    // Any external dependencies added here will automatically be copied to the lib/ directory when
+    // this extension is built.
+    implementation 'org.jetbrains:annotations:24.0.0'
+    implementation 'org.yaml:snakeyaml:2.6'
 }
 
 // Exclude additional files from the built extension

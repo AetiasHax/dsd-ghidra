@@ -15,6 +15,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Clang
+        uses: KyleMayes/install-llvm-action@v2
+        with:
+          version: 19.1.7
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -69,6 +74,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install Clang
+        uses: KyleMayes/install-llvm-action@v2
+        if: ${{ !startsWith(matrix.os, 'macos') }}
+        with:
+          version: 19.1.7
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
