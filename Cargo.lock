@@ -825,7 +825,7 @@ dependencies = [
 [[package]]
 name = "type-crawler"
 version = "0.1.0"
-source = "git+https://github.com/AetiasHax/type-crawler?branch=0.2#2c8185a8996a3baef8eab816e6565e575836c7be"
+source = "git+https://github.com/AetiasHax/type-crawler?branch=0.2#0dd62a3316b697e5e66b45d619606086ec05ce55"
 dependencies = [
  "clang",
  "derive_more",
