@@ -1,5 +1,8 @@
 use anyhow::Result;
-use ds_rom::rom::{raw::AutoloadKind, Overlay, Rom};
+use ds_rom::{
+    crypto::dsprot::DsProtDecryptOptions,
+    rom::{raw::AutoloadKind, Overlay, Rom},
+};
 
 use crate::{
     list::UnsafeList,
@@ -36,9 +39,21 @@ impl TryIntoUnsafe for SafeDsLoaderModule {
 }
 
 impl SafeDsRomLoaderData {
-    pub fn new(rom: &Rom) -> Result<Self> {
-        let mut arm9 = rom.arm9().clone();
+    pub fn new(rom: &mut Rom) -> Result<Self> {
+        let decrypt_options = &DsProtDecryptOptions { decode_relocations: false };
+        for overlay in rom.arm9_overlays_mut() {
+            overlay.decompress()?;
+            overlay.decrypt_dsprot(decrypt_options)?;
+        }
+
+        for overlay in rom.arm7_overlays_mut() {
+            overlay.decompress()?;
+        }
+
+        let arm9 = rom.arm9_mut();
         arm9.decompress()?;
+        arm9.decrypt_dsprot(decrypt_options)?;
+        let arm9 = rom.arm9();
 
         let autoloads = arm9
             .autoloads()?
@@ -86,8 +101,6 @@ impl SafeDsRomLoaderData {
         overlays
             .iter()
             .map(|overlay| {
-                let mut overlay = overlay.clone();
-                overlay.decompress()?;
                 Ok(SafeDsLoaderModule {
                     bytes: Vec::from(overlay.code()),
                     base_address: overlay.base_address(),

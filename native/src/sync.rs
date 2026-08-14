@@ -1,13 +1,16 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use ds_decomp::config::{
-    config::{Config, ConfigModule},
-    delinks::Delinks,
-    module::{Module, ModuleKind, ModuleOptions},
-    relocations::{RelocationKind, RelocationModule, Relocations},
-    section::{Section, SectionKind},
-    symbol::{SymData, SymbolKind, SymbolMap},
+use ds_decomp::{
+    analysis::jump_table::JumpTableKind,
+    config::{
+        config::{Config, ConfigModule},
+        delinks::Delinks,
+        module::{Module, ModuleKind, ModuleOptions},
+        relocations::{RelocationKind, RelocationModule, Relocations},
+        section::{Section, SectionKind},
+        symbol::{SymData, SymbolKind, SymbolMap},
+    },
 };
 use ds_rom::rom::{raw::AutoloadKind, Rom, RomLoadOptions};
 use unarm::arm;
@@ -269,11 +272,11 @@ impl SafeDsdSyncSection {
                     data_ranges
                         .push(DsdSyncDataRange { start: inline_table.address, end: inline_table.address + inline_table.size });
                 }
-                for &pool_constant in function.pool_constants() {
+                for &pool_constant in function.pool_constants().keys() {
                     data_ranges.push(DsdSyncDataRange { start: pool_constant, end: pool_constant + 4 })
                 }
                 for jump_table in function.jump_tables() {
-                    if !jump_table.code {
+                    if let JumpTableKind::Thumb { .. } = jump_table.kind {
                         data_ranges
                             .push(DsdSyncDataRange { start: jump_table.address, end: jump_table.address + jump_table.size });
                     }
@@ -284,7 +287,7 @@ impl SafeDsdSyncSection {
                     start: function.first_instruction_address(),
                     end: function.end_address(),
                     data_ranges,
-                    pool_constants: function.pool_constants().iter().copied().collect(),
+                    pool_constants: function.pool_constants().keys().copied().collect(),
                 }
             })
             .collect();
@@ -369,7 +372,7 @@ impl SafeDsdSyncSection {
                 };
                 SafeDsdSyncRelocation {
                     from: relocation.from_address(),
-                    to: (relocation.to_address() as i32 + relocation.addend_value()) as u32,
+                    to: (relocation.to_address() as i64 + relocation.addend_value()) as u32,
                     kind: reloc_kind,
                     module: reloc_module,
                     indices,
