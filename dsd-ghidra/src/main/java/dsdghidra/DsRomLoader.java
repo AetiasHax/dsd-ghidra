@@ -67,14 +67,11 @@ public class DsRomLoader extends AbstractProgramWrapperLoader {
     }
 
     @Override
-    protected void load(
-        ByteProvider provider,
-        LoadSpec loadSpec,
-        List<Option> options,
-        Program program,
-        TaskMonitor monitor,
-        MessageLog log
-    ) throws CancelledException, IOException {
+    protected void load(Program program, ImporterSettings settings) throws CancelledException, IOException {
+        ByteProvider provider = settings.provider();
+        TaskMonitor monitor = settings.monitor();
+        MessageLog log = settings.log();
+
         byte[] bytes = provider.readBytes(0, provider.length());
         DsdError dsdError = new DsdError();
         DsRomLoaderData data = new DsRomLoaderData();
@@ -171,9 +168,9 @@ public class DsRomLoader extends AbstractProgramWrapperLoader {
 
     @Override
     public List<Option> getDefaultOptions(ByteProvider provider, LoadSpec loadSpec, DomainObject domainObject,
-        boolean isLoadIntoProgram
+        boolean isLoadIntoProgram, boolean mirrorFsLayout
     ) {
-        return super.getDefaultOptions(provider, loadSpec, domainObject, isLoadIntoProgram);
+        return super.getDefaultOptions(provider, loadSpec, domainObject, isLoadIntoProgram, mirrorFsLayout);
     }
 
     @Override

@@ -45,7 +45,7 @@ You can also debug the extension through IntelliJ:
     3. VM options: `-Djava.system.class.loader=ghidra.GhidraClassLoader`
     4. Main class: `ghidra.Ghidra`
     5. Program arguments: `ghidra.GhidraRun`
-    6. Environment variables: `GHIDRA_INSTALL_DIR=C:/path/to/ghidra_11.2.1_PUBLIC/`
+    6. Environment variables: `GHIDRA_INSTALL_DIR=C:/path/to/ghidra_12.1.4_PUBLIC/`
 
 ## How to build (Linux + Eclipse)
 
