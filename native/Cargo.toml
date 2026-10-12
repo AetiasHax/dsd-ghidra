@@ -9,6 +9,6 @@ crate-type = ["cdylib"]
 [dependencies]
 anyhow = "1.0"
 cpp_demangle = "0.4"
-ds-decomp = "0.12"
+ds-decomp = { git = "https://github.com/AetiasHax/ds-decomp", tag = "v0.12.1" }
 ds-rom = "0.8"
 unarm = "1.8"

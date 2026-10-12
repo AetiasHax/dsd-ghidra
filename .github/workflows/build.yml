@@ -112,12 +112,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.5"
+          gradle-version: "9.7.1"
 
       - name: Setup Ghidra
         uses: er28-0652/setup-ghidra@master
         with:
-          version: "11.2.1"
+          version: "12.1.4"
 
       - name: Gradle build
         run: |
